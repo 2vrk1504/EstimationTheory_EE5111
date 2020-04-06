@@ -25,37 +25,53 @@ class Solver:
 		self.sigma = sigma
 		self.alpha = alpha
 	
-	def DAEM_GMM(self, X, thresh, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.0], K=2):
+	def DAEM_GMM(self, X, thresh, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.1,0.6,1.2,1], K=2):
 		"""
 			Deterministic Annealing EM Algorithm for k=2 Gaussians
 		"""
 		N = X.size
 		errors = []
+		alpha_ests = []; mu_ests=[]; likelihoods = []
+		beta_step = []
 		steps = 0
+
 		# Initial estimates
 		if alpha_est is None:
 			alpha_est = 1./K
 		if mu_est is None:
 			mu_est = [X[int(np.random.random()*N)] for j in range(K)]
 		if sigma_est is None:
-			sample_mean = np.sum(X)/N
-			cov = np.sum((X-sample_mean)**2)/N
+			cov = np.cov(X)
 			sigma_est = [cov, cov]
 
-		for beta in betas:
+		actual_likelihood = np.sum(np.log(likelihood(self.alpha,X,self.mu,self.sigma, 1))) # With actual parameters
+
+		errors.append(ds_error(self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est)) # error of first estimate
+
+		for beta in betas:	
+			print('Maximization for beta = {}'.format(beta))
 			llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
 			llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
 			h = (alpha_est**beta)*P_gaussian(X, mu_est[0], sigma_est[0], beta)/llh_1
 			tolerance = np.array([1, 1, 1, 1, 1])
+
+			if beta == 1:
+				thresh = 1e-10
+
 			while np.any(tolerance >= thresh) and steps <= 100000:
 				steps += 1
 				# print("Step {}".format(steps))
-				llh_00 = llh_01
-				llh_0 = llh_1
+				llh_00 = llh_01.copy()
+				llh_0 = llh_1.copy()
 
 				h_tot = np.sum(h)
 				mu_est[0] = np.sum(h*X)/h_tot
 				mu_est[1] = np.sum((1-h)*X)/(N-h_tot)
+
+				# Perturb the mu estimates so they split
+				if beta!=1:
+					mu_est[0] += np.random.normal(mu_est[0], 1e-7)
+
 				sigma_est[0] = (np.sum(h*(X-mu_est[0])**2)/h_tot)**0.5
 				sigma_est[1] = (np.sum((1-h)*(X-mu_est[1])**2)/(N - h_tot))**0.5
 				alpha_est = h_tot/N
@@ -64,10 +80,22 @@ class Solver:
 				llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
 
 				h = (alpha_est**beta)*P_gaussian(X, mu_est[0], sigma_est[0], beta)/llh_1
-				tolerance = np.abs((llh_01-llh_00)/llh_00)
-				errors.append(ds_error(self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est))
+				tolerance = np.abs((llh_01-llh_00)/llh_01)
 
-		return alpha_est, mu_est, sigma_est, errors, steps
+				errors.append(ds_error(self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est))
+				likelihoods.append(np.sum(np.log(llh_01)))
+				alpha_ests.append(alpha_est); mu_ests.append(np.array(mu_est))
+
+				# Break based on daem error
+				if beta!=1 and np.abs((errors[-1]-errors[-2])/errors[-1])<thresh:
+					break
+				# elif np.abs((errors[-1]-errors[-2])/errors[-1])<1e-8:
+				# 	break	
+
+			beta_step.append((beta, steps-1))
+			# print('Beta: {} --- alpha_est: {}, mu_est: {}, sigma_est: {}'.format(beta, alpha_ests, mu_est, sigma_est))
+
+		return alpha_ests, mu_ests, sigma_est, errors, steps, beta_step, likelihoods, actual_likelihood
 
 	def EM_GMM(self, X, thresh, mu_est=None, sigma_est=None, alpha_est=None):
 		"""
