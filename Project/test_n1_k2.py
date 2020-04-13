@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from algos import Solver
 
 N = 1000		# number of samples
-K = 3			# number of mixed Gaussians
+K = 2			# number of mixed Gaussians
 mus = [0]		
 sigma = np.array([		# covariance matrices
 	np.array([[6.25]]), 

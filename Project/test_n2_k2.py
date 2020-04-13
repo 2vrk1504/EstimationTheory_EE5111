@@ -2,20 +2,20 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from algos import Solver
 
-N = 1000		# number of samples
+N = 10000		# number of samples
 K = 2			# number of mixed Gaussians
 n = 2			# dimension
 mu = np.array([
-	np.array([[55],
-			  [0]]),
-	np.array([[0],
-			  [65]])
+	np.array([[-5],
+			  [5]]),
+	np.array([[5],
+			  [-5]])
 	])	
 sigma = np.array([		# covariance matrices
-	np.array([[6.25, 0],
-			  [0, 6.25]]), 
-	np.array([[6.25, 0],
-			  [0, 6.25]])
+	np.array([[1, 0],
+			  [0, 1]]), 
+	np.array([[1, 0],
+			  [0, 1]])
 ])	
 
 def toss(alpha):
@@ -27,7 +27,7 @@ def toss(alpha):
 		else:
 			last += alpha[k]
 
-alphas = [[0.5, 0.5]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
+alphas = [[0.7, 0.3]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
 colors = ['red', 'pink', 'brown']
 
@@ -42,21 +42,28 @@ for alpha in alphas:
 	# Xi is 1 dimensional. N data points
 	# need to generate data properly as required 
 	X = np.empty((n,0))
+	wsigs = []; vsigs = [];
+	for k in range(K):
+		wsig, vsig = np.linalg.eig(sigma[k])
+		wsigs.append(wsig); 
+		vsigs.append(vsig)
 	for j in range(N):
-		my_mu = mu[toss(alpha)]; my_sigma = sigma[toss(alpha)]
-		sample = my_mu + my_sigma.dot(np.random.randn(n, 1))
+		my_mu = mu[toss(alpha)]
+		my_wsig = wsigs[toss(alpha)]
+		my_vsig = vsigs[toss(alpha)]
+		sample = my_mu + (my_wsig**0.5).dot(my_vsig.dot(np.random.randn(n, 1)))
 		X = np.append(X, sample, axis=1)
 
 	print('Actual:')
 	print('alpha: {}\nmu:\n{}\nsigma:\n{}\n\n'.format(alpha, mu, sigma))
-	alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-4, K=K, max_steps=20000)
+	alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-4, K=K, max_steps=5000)
 	errorss_daem.append(errors_daem)
 	alphass_daem.append(alpha_est_daem)
 	muss_daem.append(mu_est_daem)
 	bs.append(beta_step)
 	print('DAEM')
 	print('Steps:\n{}\n alpha_est: {}\nmu_est:\n{}\nsigma_est:\n{}\n\n'.format(steps, alpha_est_daem[-1], mu_est_daem[-1], sigma_est_daem))
-	alpha_est_em, mu_est_em, sigma_est_em, errors_em, steps, __, likelihoods_em, actual_likelihood_em = solver.EM_GMM(X=X, thresh=1e-10, K=K, max_steps=20000)
+	alpha_est_em, mu_est_em, sigma_est_em, errors_em, steps, __, likelihoods_em, actual_likelihood_em = solver.EM_GMM(X=X, thresh=1e-10, K=K, max_steps=5000)
 	errorss_em.append(errors_em)
 	alphass_em.append(alpha_est_em)
 	muss_em.append(mu_est_em)

@@ -3,12 +3,12 @@ import numpy as np
 def P_gaussian(x, mu, sigma, beta):
 	n, N = x.shape
 	wsig, vsig = np.linalg.eig(sigma)
-	sig_inv = vsig.T.dot(np.diag(1/(wsig+1e-11)).dot(vsig)) # sigma inverse
+	sig_inv = vsig.T.dot(np.diag(1/(wsig+1e-9)).dot(vsig)) # sigma inverse
 	x_mu = x - mu
 	xx = sig_inv[:, 0].reshape((n, 1)) * x_mu[0] 
 	for i in range(1,n):
 		xx += sig_inv[:, i].reshape((n, 1)) * x_mu[i]
-	exp_arg = -(x_mu * xx)/ 2
+	exp_arg = -np.sum(x_mu * xx, axis=0)/ 2
 	val =  ((1/(((2*np.pi)**n)*abs(np.prod(wsig)))**0.5)*np.exp(exp_arg))**beta
 	return val
 
@@ -46,8 +46,8 @@ class Solver:
 		self.sigma = sigma
 		self.alpha = alpha
 	
-	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.4, 0.6, 0.9, 1.1, 1.0], 
-				 history_length=100, tolerance_history_thresh=1e-6, max_steps=10000):
+	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.2, 0.4, 0.6, 0.9, 1.2, 1.0], 
+				 history_length=1000, tolerance_history_thresh=1e-9, max_steps=10000):
 		"""
 			Deterministic Anti - Annealing EM Algorithm for k n-dimensional Gaussians
 
@@ -96,8 +96,8 @@ class Solver:
 			llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
 
 			# define h[k, i] = probability that xi belongs to class k
-			h = [(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/llh_1 for k in range(K)]
-
+			h = np.array([(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/(llh_1+1e-9) for k in range(K-1)])
+			h = np.append(h, [(1 - np.sum(h, axis=0))], axis=0)
 			# however, the following is being done for numerical stability
 			# h = np.array([(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/llh_1 for k in range(K-1)])
 			# h = np.append(h, [(1 - np.sum(h, axis=1))], axis=0)
@@ -120,26 +120,27 @@ class Solver:
 				for k in range(K):
 					h_tot_k = np.sum(h[k])
 					#print(h[k])
-					mu_est[k] = np.sum(h[k]*X, axis=1).reshape((n, 1))/(h_tot_k + 1e-11)
+					mu_est[k] = np.sum(h[k]*X, axis=1).reshape((n, 1))/(h_tot_k + 1e-9)
 
 					# Perturb the mu estimates so they split
 					# if the max change in the past 100 iterations is not much then
-					if np.max(tolerance_history) <= tolerance_history_thresh:
-						mu_est[k] += np.random.randn(n, 1)
+					# if np.max(tolerance_history) <= tolerance_history_thresh:
+					# 	mu_est[k] += 1e-6*np.random.randn(n, 1) 
 
 					X_mu = X - mu_est[k]
 					h_X_mu = h[k]*X_mu
 					for i in range(n):
 						sigma_est[k][i] = np.sum(X_mu[i]*h_X_mu, axis=1)
-					sigma_est[k] /= (h_tot_k + 1e-19)
-					
+					sigma_est[k] /= (h_tot_k + 1e-9)
+					sigma_est[k] += 1e-6 * np.eye(n)
 					alpha_est[k] = h_tot_k/N
 
 				llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
 
 				llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
 
-				h = [(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/llh_1 for k in range(K)]
+				h = [(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/(llh_1+1e-9) for k in range(K-1)]
+				h = np.append(h, [(1 - np.sum(h, axis=0))], axis=0)
 
 				log_ll0 = np.log(llh_00 + 1e-11)
 				log_ll1 = np.log(llh_01 + 1e-11)
@@ -147,9 +148,9 @@ class Solver:
 				tolerance_history = np.append(tolerance_history[1:], [np.max(tolerance)])
 
 				errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est))
-				likelihoods.append(np.sum(log_ll1))
+				likelihoods.append(np.sum(log_ll1)) 
 				alpha_ests.append(np.array(alpha_est)); mu_ests.append(np.array(mu_est))
-			print("Steps {} tolerance {} mu {},{}".format(steps,tolerance_history[-1],mu_est[0],mu_est[1]))
+			print("Steps {} ".format(steps))
 			beta_step.append((beta, steps-1))
 
 			# print('Beta: {} --- alpha_est: {}, mu_est: {}, sigma_est: {}'.format(beta, alpha_ests, mu_est, sigma_est))
