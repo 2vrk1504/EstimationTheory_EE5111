@@ -10,8 +10,6 @@ def P_gaussian(x, mu, sigma, beta):
 		xx += sig_inv[:, i].reshape((n, 1)) * x_mu[i]
 	exp_arg = -(x_mu * xx)/ 2
 	val =  ((1/(((2*np.pi)**n)*abs(np.prod(wsig)))**0.5)*np.exp(exp_arg))**beta
-	if np.max(val)<1e-30:
-		val = 1e-30*np.ones(np.shape(val))
 	return val
 
 def likelihood(alphas, x, mus, sigmas, beta):
@@ -19,8 +17,6 @@ def likelihood(alphas, x, mus, sigmas, beta):
 	K = alphas.size
 	for k in range(K):
 		ll += (alphas[k]**beta)*P_gaussian(x, mus[k], sigmas[k], beta)
-	if np.max(ll)<1e-30:
-		ll = 1e-30*np.ones(np.shape(ll))
 	return ll
 
 def ds_error(n, K, alpha, mu, sigma, alpha_est, mu_est, sigma_est):
@@ -142,8 +138,6 @@ class Solver:
 					
 					alpha_est[k] = h_tot_k/N
 
-					#if beta!=1:
-						#mu_est[k]+=np.random.randn(n,1)*mu_est[k]/10000000
 				llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
 
 				llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)

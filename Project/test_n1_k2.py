@@ -4,10 +4,10 @@ from algos import Solver
 
 N = 1000		# number of samples
 K = 2			# number of mixed Gaussians
-mus = [0.01]		
+mus = [10]		
 sigma = np.array([		# covariance matrices
-	np.array([[0.002**2]]), 
-	np.array([[0.002**2]])
+	np.array([[6.25]]), 
+	np.array([[6.25]])
 ])	
 
 def toss(alpha):
@@ -23,7 +23,7 @@ colors = ['red', 'pink', 'brown']
 
 
 for mu_iter in mus:
-	mu = np.array([[-mu_iter], [mu_iter]])
+	mu = np.array([[90],[110]]) #np.array([[-mu_iter], [mu_iter]])
 	errorss_daem = []; alphass_daem = []; muss_daem = [];
 	errorss_em = []; alphass_em = []; muss_em = []
 	bs = []
