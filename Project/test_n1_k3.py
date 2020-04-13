@@ -7,6 +7,7 @@ K = 3			# number of mixed Gaussians
 mus = [0]		
 sigma = np.array([		# covariance matrices
 	np.array([[6.25]]), 
+	np.array([[6.25]]),
 	np.array([[6.25]])
 ])	
 
@@ -19,13 +20,13 @@ def toss(alpha):
 		else:
 			last += alpha[k]
 
-alphas = [[0.5, 0.5]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
+alphas = [[0.4, 0.5, 0.1]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
 colors = ['red', 'pink', 'brown']
 
 
 for mu_iter in mus:
-	mu = np.array([[55],[65]]) #np.array([[-mu_iter], [mu_iter]])
+	mu = np.array([[55],[65],[75]]) #np.array([[-mu_iter], [mu_iter]])
 	errorss_daem = []; alphass_daem = []; muss_daem = [];
 	errorss_em = []; alphass_em = []; muss_em = []
 	bs = []

@@ -3,7 +3,7 @@ import numpy as np
 def P_gaussian(x, mu, sigma, beta):
 	n, N = x.shape
 	wsig, vsig = np.linalg.eig(sigma)
-	sig_inv = vsig.T.dot(np.diag(1/wsig).dot(vsig)) # sigma inverse
+	sig_inv = vsig.T.dot(np.diag(1/(wsig+1e-11)).dot(vsig)) # sigma inverse
 	x_mu = x - mu
 	xx = sig_inv[:, 0].reshape((n, 1)) * x_mu[0] 
 	for i in range(1,n):
@@ -46,8 +46,8 @@ class Solver:
 		self.sigma = sigma
 		self.alpha = alpha
 	
-	def DAEM_GMM(self, X, thresh, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.001, 0.4, 0.9,1.1, 1.0], 
-					K=2, history_length=100, tolerance_history_thresh=1e-6):
+	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.4, 0.6, 0.9, 1.1, 1.0], 
+				 history_length=100, tolerance_history_thresh=1e-6, max_steps=10000):
 		"""
 			Deterministic Anti - Annealing EM Algorithm for k n-dimensional Gaussians
 
@@ -76,22 +76,22 @@ class Solver:
 			sigma_est = [cov for j in range(K)]
 
  
-		actual_likelihood = np.sum(np.log(likelihood(self.alpha, X, self.mu, self.sigma, 1))) # With actual parameters
+		actual_likelihood = np.sum(np.log(likelihood(self.alpha, X, self.mu, self.sigma, 1) + 1e-11)) # With actual parameters
 	
 		errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est)) # error of first estimate
 		likelihoods.append(np.sum(np.log(likelihood(alpha_est, X, mu_est, sigma_est, 1))))
 		alpha_ests.append(np.array(alpha_est)); mu_ests.append(np.array(mu_est))
 
-		start = 0
+		started = False
 		for beta in betas:	
 			print('Maximization for beta = {}'.format(beta))
 
-			if beta!=1 and start!=0:
-				noose = sigma_est[0][0,0]**0.5/2
-				mu_est[0] += noose #1
-				mu_est[1] -= noose #1
+			if beta!=1 and started:
+				for k in range(K):
+					wsig, vsig = np.linalg.eig(sigma_est[k])
+					mu_est[k] = vsig.T.dot(vsig.dot(mu_est[k]) + np.random.normal()*wsig.reshape((n,1))**0.5/2)
 
-			start = 1
+			started = True
 			llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
 			llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
 
@@ -106,16 +106,13 @@ class Solver:
 			tolerance = np.ones(N)
 			tolerance_history = np.ones(history_length)
 
-			#for k in range(K):
-			#	mu_est[k] += np.random.randn(n, 1)
-			
 			if beta == 1:
 				thresh = 1e-10
 				tolerance_history_thresh = 1e-3
 
-			while tolerance_history[-1] >= thresh and steps <= 5000 or steps == 0:
+			while tolerance_history[-1] >= thresh and steps <= max_steps:
 				steps += 1
-				#print("Step {}".format(steps), end='\r')
+				print("Step {}".format(steps), end='\r')
 				llh_00 = llh_01.copy()
 				llh_0 = llh_1.copy()
 				mu_prev = mu_est.copy()
@@ -123,7 +120,7 @@ class Solver:
 				for k in range(K):
 					h_tot_k = np.sum(h[k])
 					#print(h[k])
-					mu_est[k] = np.sum(h[k]*X, axis=1).reshape((n, 1))/h_tot_k
+					mu_est[k] = np.sum(h[k]*X, axis=1).reshape((n, 1))/(h_tot_k + 1e-11)
 
 					# Perturb the mu estimates so they split
 					# if the max change in the past 100 iterations is not much then
@@ -134,7 +131,7 @@ class Solver:
 					h_X_mu = h[k]*X_mu
 					for i in range(n):
 						sigma_est[k][i] = np.sum(X_mu[i]*h_X_mu, axis=1)
-					sigma_est[k] /= h_tot_k
+					sigma_est[k] /= (h_tot_k + 1e-19)
 					
 					alpha_est[k] = h_tot_k/N
 
@@ -142,12 +139,10 @@ class Solver:
 
 				llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
 
-				h = np.array([(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/llh_1 for k in range(K-1)])
+				h = [(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/llh_1 for k in range(K)]
 
-				h = np.append(h, [(1 - np.sum(h, axis=1))], axis=0)
-
-				log_ll0 = np.log(llh_00)
-				log_ll1 = np.log(llh_01)
+				log_ll0 = np.log(llh_00 + 1e-11)
+				log_ll1 = np.log(llh_01 + 1e-11)
 				tolerance = np.abs(((log_ll0-log_ll1)/log_ll1))
 				tolerance_history = np.append(tolerance_history[1:], [np.max(tolerance)])
 
@@ -160,8 +155,8 @@ class Solver:
 			# print('Beta: {} --- alpha_est: {}, mu_est: {}, sigma_est: {}'.format(beta, alpha_ests, mu_est, sigma_est))
 		return alpha_ests, mu_ests, sigma_est, errors, steps, beta_step, likelihoods, actual_likelihood
 
-	def EM_GMM(self, X, thresh, mu_est=None, sigma_est=None, alpha_est=None):
+	def EM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, max_steps=10000):
 		"""
 			Regular Expectation Maximization
 		"""
-		return self.DAEM_GMM(X=X, thresh=thresh, mu_est=mu_est, sigma_est=sigma_est, alpha_est=alpha_est, betas=[1])
+		return self.DAEM_GMM(X=X, thresh=thresh, K=K, mu_est=mu_est, sigma_est=sigma_est, alpha_est=alpha_est, betas=[1], max_steps=max_steps)
