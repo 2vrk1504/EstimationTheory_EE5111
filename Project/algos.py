@@ -9,13 +9,18 @@ def P_gaussian(x, mu, sigma, beta):
 	for i in range(1,n):
 		xx += sig_inv[:, i].reshape((n, 1)) * x_mu[i]
 	exp_arg = -(x_mu * xx)/ 2
-	return ((1/(((2*np.pi)**n)*abs(np.prod(wsig)))**0.5)*np.exp(exp_arg))**beta
+	val =  ((1/(((2*np.pi)**n)*abs(np.prod(wsig)))**0.5)*np.exp(exp_arg))**beta
+	if np.max(val)<1e-30:
+		val = 1e-30*np.ones(np.shape(val))
+	return val
 
 def likelihood(alphas, x, mus, sigmas, beta):
 	ll = 0
 	K = alphas.size
 	for k in range(K):
 		ll += (alphas[k]**beta)*P_gaussian(x, mus[k], sigmas[k], beta)
+	if np.max(ll)<1e-30:
+		ll = 1e-30*np.ones(np.shape(ll))
 	return ll
 
 def ds_error(n, K, alpha, mu, sigma, alpha_est, mu_est, sigma_est):
@@ -45,10 +50,10 @@ class Solver:
 		self.sigma = sigma
 		self.alpha = alpha
 	
-	def DAEM_GMM(self, X, thresh, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.1, 0.6, 1.2, 1.0], 
+	def DAEM_GMM(self, X, thresh, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.001, 0.4, 0.9,1.1, 1.0], 
 					K=2, history_length=100, tolerance_history_thresh=1e-6):
 		"""
-			Deterministic Annealing EM Algorithm for k n-dimensional Gaussians
+			Deterministic Anti - Annealing EM Algorithm for k n-dimensional Gaussians
 
 			X.shape = n x N. Xi is n-dimensional. N data points 
 		"""
@@ -81,8 +86,16 @@ class Solver:
 		likelihoods.append(np.sum(np.log(likelihood(alpha_est, X, mu_est, sigma_est, 1))))
 		alpha_ests.append(np.array(alpha_est)); mu_ests.append(np.array(mu_est))
 
+		start = 0
 		for beta in betas:	
 			print('Maximization for beta = {}'.format(beta))
+
+			if beta!=1 and start!=0:
+				noose = sigma_est[0][0,0]**0.5/2
+				mu_est[0] += noose #1
+				mu_est[1] -= noose #1
+
+			start = 1
 			llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
 			llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
 
@@ -97,21 +110,23 @@ class Solver:
 			tolerance = np.ones(N)
 			tolerance_history = np.ones(history_length)
 
-			for k in range(K):
-				mu_est[k] += np.random.randn(n, 1)
+			#for k in range(K):
+			#	mu_est[k] += np.random.randn(n, 1)
 			
 			if beta == 1:
 				thresh = 1e-10
+				tolerance_history_thresh = 1e-3
 
-			while tolerance_history[-1] >= thresh and steps <= 5000:
+			while tolerance_history[-1] >= thresh and steps <= 5000 or steps == 0:
 				steps += 1
-				print("Step {}".format(steps), end='\r')
+				#print("Step {}".format(steps), end='\r')
 				llh_00 = llh_01.copy()
 				llh_0 = llh_1.copy()
 				mu_prev = mu_est.copy()
 
 				for k in range(K):
 					h_tot_k = np.sum(h[k])
+					#print(h[k])
 					mu_est[k] = np.sum(h[k]*X, axis=1).reshape((n, 1))/h_tot_k
 
 					# Perturb the mu estimates so they split
@@ -127,21 +142,25 @@ class Solver:
 					
 					alpha_est[k] = h_tot_k/N
 
+					#if beta!=1:
+						#mu_est[k]+=np.random.randn(n,1)*mu_est[k]/10000000
 				llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
+
 				llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
 
 				h = np.array([(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/llh_1 for k in range(K-1)])
+
 				h = np.append(h, [(1 - np.sum(h, axis=1))], axis=0)
 
 				log_ll0 = np.log(llh_00)
 				log_ll1 = np.log(llh_01)
-				tolerance = np.abs((log_ll0-log_ll1)/log_ll1)
+				tolerance = np.abs(((log_ll0-log_ll1)/log_ll1))
 				tolerance_history = np.append(tolerance_history[1:], [np.max(tolerance)])
 
 				errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est))
 				likelihoods.append(np.sum(log_ll1))
 				alpha_ests.append(np.array(alpha_est)); mu_ests.append(np.array(mu_est))
-			print("Steps {}".format(steps))
+			print("Steps {} tolerance {} mu {},{}".format(steps,tolerance_history[-1],mu_est[0],mu_est[1]))
 			beta_step.append((beta, steps-1))
 
 			# print('Beta: {} --- alpha_est: {}, mu_est: {}, sigma_est: {}'.format(beta, alpha_ests, mu_est, sigma_est))

@@ -4,10 +4,10 @@ from algos import Solver
 
 N = 1000		# number of samples
 K = 2			# number of mixed Gaussians
-mus = [5]		
+mus = [0.01]		
 sigma = np.array([		# covariance matrices
-	np.array([[6.25]]), 
-	np.array([[6.25]])
+	np.array([[0.002**2]]), 
+	np.array([[0.002**2]])
 ])	
 
 def toss(alpha):
@@ -17,7 +17,7 @@ def toss(alpha):
 	else:
 		return 1
 
-alphas = [0.975] #np.linspace(0.6, 0.6, 1) # mixing coefficients
+alphas = [0.9] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
 colors = ['red', 'pink', 'brown']
 
@@ -37,7 +37,7 @@ for mu_iter in mus:
 
 		print('Actual:')
 		print('alpha: {}\nmu:\n{}\nsigma:\n{}\n\n'.format(alpha, mu, sigma))
-		alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-6, K=2)
+		alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=10, K=2)
 		errorss_daem.append(errors_daem)
 		alphass_daem.append(alpha_est_daem)
 		muss_daem.append(mu_est_daem)
@@ -58,13 +58,13 @@ for mu_iter in mus:
 	plt.subplot(1,2,1)
 	plt.title(r'DAEM Error vs. Iterations, $(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
 	for i, alpha in enumerate(alphas):
-		plt.plot(errorss_daem[i], 'x-', label=r'$\alpha=$'+str(alpha))
+		plt.plot(errorss_daem[i][1:], 'x-', label=r'$\alpha=$'+str(alpha))
 		for _bs in bs[i]:
 			plt.axvline(x=_bs[1], color=colors[i], ls=':', lw=1, label=r'$\beta=$'+str(_bs[0]))
 	plt.grid(True)
 	plt.legend(loc='upper right')
 
-
+	"""
 	plt.figure('alpha')
 	plt.subplot(1,2,1)
 	plt.title(r'DAEM, $\hat{\alpha}$ vs. Iterations, $(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
@@ -87,6 +87,7 @@ for mu_iter in mus:
 		plt.plot(muss_daem[i][-1][0][0,0], muss_daem[i][-1][1][0,0],'x-', color='green')
 	plt.grid(True)
 	plt.legend(loc='upper right')
+	"""
 
 	plt.figure('Likelihood')
 	plt.subplot(1,2,1)
@@ -107,6 +108,7 @@ for mu_iter in mus:
 	plt.grid(True)
 	plt.legend(loc='upper right')
 
+	"""
 	plt.figure('alpha')
 	plt.subplot(1,2,2)
 	plt.title(r'EM, $\hat{\alpha}$ vs. Iterations, $(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
@@ -115,6 +117,7 @@ for mu_iter in mus:
 		plt.plot(alphass_em[i][:,0], label=r'$\alpha=$'+str(alpha))
 	plt.grid(True)
 	plt.legend(loc='upper right')
+	
 
 	plt.figure('Mu')
 	plt.subplot(1,2,2)
@@ -125,6 +128,7 @@ for mu_iter in mus:
 		plt.plot(muss_em[i][-1][0][0,0], muss_em[i][-1][1][0,0],'x-', color='green')
 	plt.grid(True)
 	plt.legend(loc='upper right')
+	"""
 
 	plt.figure('Likelihood')
 	plt.subplot(1,2,2)
