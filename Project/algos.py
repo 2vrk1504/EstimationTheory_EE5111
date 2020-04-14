@@ -47,7 +47,7 @@ class Solver:
 		self.alpha = alpha
 	
 	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.2, 0.4, 0.6, 0.9, 1.2, 1.0], 
-				 history_length=1000, tolerance_history_thresh=1e-9, max_steps=10000):
+				 history_length=100, tolerance_history_thresh=1e-6, max_steps=10000):
 		"""
 			Deterministic Anti - Annealing EM Algorithm for k n-dimensional Gaussians
 			X.shape = n x N. Xi is n-dimensional. N data points 
@@ -123,8 +123,8 @@ class Solver:
 
 					# Perturb the mu estimates so they split
 					# if the max change in the past 100 iterations is not much then
-					# if np.max(tolerance_history) <= tolerance_history_thresh:
-					# 	mu_est[k] += 1e-6*np.random.randn(n, 1) 
+					if np.max(tolerance_history) <= tolerance_history_thresh:
+						mu_est[k] += np.random.randn(n, 1) 
 
 					X_mu = X - mu_est[k]
 					h_X_mu = h[k]*X_mu

@@ -64,7 +64,7 @@ for alpha in alphas:
 
 	print('Actual:')
 	print('alpha: {}\nmu:\n{}\nsigma:\n{}\n\n'.format(alpha, mu, sigma))
-	alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-4, K=K, max_steps=5000)
+	alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-6, K=K, max_steps=5000)
 	errorss_daem.append(errors_daem)
 	alphass_daem.append(alpha_est_daem)
 	muss_daem.append(mu_est_daem)
