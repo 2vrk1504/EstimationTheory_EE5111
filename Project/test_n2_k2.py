@@ -2,21 +2,31 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from algos import Solver
 
-N = 10000		# number of samples
-K = 2			# number of mixed Gaussians
+N = 20000		# number of samples
+K = 4			# number of mixed Gaussians
 n = 2			# dimension
 mu = np.array([
-	np.array([[-5],
-			  [5]]),
+	np.array([[0],
+			  [-5]]),
 	np.array([[5],
-			  [-5]])
+			  [0]]),
+	np.array([[0],
+			  [5]]),
+	np.array([[-5],
+			  [0]])
 	])	
 sigma = np.array([		# covariance matrices
-	np.array([[1, 0],
-			  [0, 1]]), 
-	np.array([[1, 0],
-			  [0, 1]])
+	np.array([[1, 0.5],
+			  [0.5, 1]]), 
+	np.array([[1, 0.5],
+			  [0.5, 1]]),
+	np.array([[1, 0.5],
+			  [0.5, 1]]), 
+	np.array([[1, 0.5],
+			  [0.5, 1]])
 ])	
+
+alphas = [[0.2, 0.3, 0.1, 0.4]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
 def toss(alpha):
 	x = np.random.random()
@@ -26,8 +36,6 @@ def toss(alpha):
 			return k
 		else:
 			last += alpha[k]
-
-alphas = [[0.7, 0.3]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
 colors = ['red', 'pink', 'brown']
 
@@ -51,7 +59,7 @@ for alpha in alphas:
 		my_mu = mu[toss(alpha)]
 		my_wsig = wsigs[toss(alpha)]
 		my_vsig = vsigs[toss(alpha)]
-		sample = my_mu + (my_wsig**0.5).dot(my_vsig.dot(np.random.randn(n, 1)))
+		sample = my_mu + my_vsig.dot((my_wsig**0.5)*np.random.randn(n, 1))
 		X = np.append(X, sample, axis=1)
 
 	print('Actual:')
@@ -88,7 +96,8 @@ plt.subplot(1,2,1)
 plt.title(r'DAEM, $\hat{\alpha}$ vs. Iterations, ')#$(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
 alphass_daem = np.array(alphass_daem)
 for i, alpha in enumerate(alphas):
-	plt.plot(alphass_daem[i], label=r'$\alpha=$'+str(alpha))
+	for k in range(len(alpha)):
+		plt.plot(alphass_daem[i][:,k], label=r'$\alpha=$'+str(alpha[k]))
 	for _bs in bs[i]:
 		plt.axvline(x=_bs[1], color=colors[i], ls=':', lw=1, label=r'$\beta=$'+str(_bs[0]))
 plt.grid(True)
@@ -130,7 +139,8 @@ plt.subplot(1,2,2)
 plt.title(r'EM, $\hat{\alpha}$ vs. Iterations, ')#$(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
 alphass_em = np.array(alphass_em)
 for i, alpha in enumerate(alphas):
-	plt.plot(alphass_em[i], label=r'$\alpha=$'+str(alpha))
+	for k in range(len(alpha)):
+		plt.plot(alphass_em[i][:,k], label=r'$\alpha=$'+str(alpha[k]))
 plt.grid(True)
 plt.legend(loc='upper right')
 

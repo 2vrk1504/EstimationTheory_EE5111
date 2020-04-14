@@ -50,7 +50,6 @@ class Solver:
 				 history_length=1000, tolerance_history_thresh=1e-9, max_steps=10000):
 		"""
 			Deterministic Anti - Annealing EM Algorithm for k n-dimensional Gaussians
-
 			X.shape = n x N. Xi is n-dimensional. N data points 
 		"""
 		n, N = X.shape
@@ -73,7 +72,7 @@ class Solver:
 			for i in range(n):
 				cov[i] += np.sum(X_mu[i]*X_mu, axis=1)
 			cov /= N
-			sigma_est = [cov for j in range(K)]
+			sigma_est = np.array([np.array(cov) for j in range(K)])
 
  
 		actual_likelihood = np.sum(np.log(likelihood(self.alpha, X, self.mu, self.sigma, 1) + 1e-11)) # With actual parameters

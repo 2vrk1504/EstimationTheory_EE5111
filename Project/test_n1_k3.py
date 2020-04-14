@@ -2,13 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from algos import Solver
 
-N = 1000		# number of samples
+N = 10000		# number of samples
 K = 3			# number of mixed Gaussians
 mus = [0]		
 sigma = np.array([		# covariance matrices
-	np.array([[6.25]]), 
-	np.array([[6.25]]),
-	np.array([[6.25]])
+	np.array([[0.01]]), 
+	np.array([[1]]),
+	np.array([[4]])
 ])	
 
 def toss(alpha):
@@ -19,8 +19,9 @@ def toss(alpha):
 			return k
 		else:
 			last += alpha[k]
+	return k
 
-alphas = [[0.4, 0.5, 0.1]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
+alphas = [[0.02, 0.3, 0.68]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
 colors = ['red', 'pink', 'brown']
 
@@ -72,7 +73,8 @@ for mu_iter in mus:
 	plt.title(r'DAEM, $\hat{\alpha}$ vs. Iterations, $(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
 	alphass_daem = np.array(alphass_daem)
 	for i, alpha in enumerate(alphas):
-		plt.plot(alphass_daem[i], label=r'$\alpha=$'+str(alpha))
+		for k in range(len(alpha)):
+			plt.plot(alphass_daem[i][:,k], label=r'$\alpha=$'+str(alpha[k]))
 		for _bs in bs[i]:
 			plt.axvline(x=_bs[1], color=colors[i], ls=':', lw=1, label=r'$\beta=$'+str(_bs[0]))
 	plt.grid(True)
@@ -111,10 +113,11 @@ for mu_iter in mus:
 
 	plt.figure('alpha')
 	plt.subplot(1,2,2)
-	plt.title(r'EM, $\hat{\alpha}$ vs. Iterations, $(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
+	plt.title(r'EM, $\hat{\alpha}$ vs. Iterations, ')#$(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
 	alphass_em = np.array(alphass_em)
 	for i, alpha in enumerate(alphas):
-		plt.plot(alphass_em[i], label=r'$\alpha=$'+str(alpha))
+		for k in range(len(alpha)):
+			plt.plot(alphass_em[i][:,k], label=r'$\alpha=$'+str(alpha[k]))
 	plt.grid(True)
 	plt.legend(loc='upper right')
 	
