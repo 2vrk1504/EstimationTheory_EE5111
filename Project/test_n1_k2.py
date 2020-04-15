@@ -36,7 +36,9 @@ for mu_iter in mus:
 
 		# Xi is 1 dimensional. N data points
 		# need to generate data properly as required 
-		X = np.array([np.random.normal(mu[toss(alpha)], sigma[toss(alpha)]**0.5) for j in range(N)]).reshape(1, N)
+		def getsample(k):
+			return np.random.normal(mu[k], sigma[k]**0.5)
+		X = np.array([ getsample(toss(alpha)) for j in range(N)]).reshape(1, N)
 
 		print('Actual:')
 		print('alpha: {}\nmu:\n{}\nsigma:\n{}\n\n'.format(alpha, mu, sigma))

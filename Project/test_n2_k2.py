@@ -1,32 +1,34 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
 from algos import Solver
+# from algos_arvind import Solver
 
-N = 20000		# number of samples
-K = 4			# number of mixed Gaussians
+
+N = 2000		# number of samples
+K = 2			# number of mixed Gaussians
 n = 2			# dimension
 mu = np.array([
-	np.array([[0],
-			  [-5]]),
-	np.array([[5],
+	np.array([[-20],
 			  [0]]),
-	np.array([[0],
-			  [5]]),
-	np.array([[-5],
-			  [0]])
+	np.array([[10],
+			  [0]]),
+	# np.array([[0],
+	# 		  [5]]),
+	# np.array([[-5],
+	# 		  [0]])
 	])	
 sigma = np.array([		# covariance matrices
-	np.array([[1, 0.5],
-			  [0.5, 1]]), 
-	np.array([[1, 0.5],
-			  [0.5, 1]]),
-	np.array([[1, 0.5],
-			  [0.5, 1]]), 
-	np.array([[1, 0.5],
-			  [0.5, 1]])
+	np.array([[100, 0],
+			  [0, 100]]), 
+	np.array([[100, 0],
+			  [0, 100]]), 
+	# np.array([[1, 0.95],
+	# 		  [0.95, 1]]), 
+	# np.array([[1, 0.95],
+	# 		  [0.95, 1]])
 ])	
 
-alphas = [[0.2, 0.3, 0.1, 0.4]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
+alphas = [[0.1, 0.9]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
 def toss(alpha):
 	x = np.random.random()
@@ -38,7 +40,7 @@ def toss(alpha):
 			last += alpha[k]
 
 colors = ['red', 'pink', 'brown']
-
+color_dis = ['green', 'blue']
  
 errorss_daem = []; alphass_daem = []; muss_daem = [];
 errorss_em = []; alphass_em = []; muss_em = []
@@ -50,21 +52,32 @@ for alpha in alphas:
 	# Xi is 1 dimensional. N data points
 	# need to generate data properly as required 
 	X = np.empty((n,0))
-	wsigs = []; vsigs = [];
-	for k in range(K):
-		wsig, vsig = np.linalg.eig(sigma[k])
-		wsigs.append(wsig); 
-		vsigs.append(vsig)
+	X_classes = [np.empty((n,0)) for k in range(K)]
+	decomps = [np.linalg.eig(sigma[k]) for k in range(K)]
 	for j in range(N):
-		my_mu = mu[toss(alpha)]
-		my_wsig = wsigs[toss(alpha)]
-		my_vsig = vsigs[toss(alpha)]
-		sample = my_mu + my_vsig.dot((my_wsig**0.5)*np.random.randn(n, 1))
+		k_chosen = toss(alpha)
+		my_mu = mu[k_chosen]
+		wsig, vsig = decomps[k_chosen]
+		sample = my_mu + vsig.dot((wsig**0.5)*np.random.randn(n, 1))
+		X_classes[k_chosen] = np.append(X_classes[k_chosen], sample, axis=1)
 		X = np.append(X, sample, axis=1)
+
+
+	def coco(X):
+		sample_mean = np.sum(X, axis=0)/N
+		X_mu = X - sample_mean
+		cov = np.zeros((n,n))
+		for i in range(n):
+			cov[i] += np.sum(X_mu[i]*X_mu, axis=1)
+		cov /= N
+		return cov
+
+	print(coco(X_classes[0]))
+	print(coco(X_classes[1]))
 
 	print('Actual:')
 	print('alpha: {}\nmu:\n{}\nsigma:\n{}\n\n'.format(alpha, mu, sigma))
-	alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-6, K=K, max_steps=5000)
+	alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-4, K=K, max_steps=5000)
 	errorss_daem.append(errors_daem)
 	alphass_daem.append(alpha_est_daem)
 	muss_daem.append(mu_est_daem)
@@ -163,6 +176,38 @@ for i, alpha in enumerate(alphas):
 plt.plot(np.repeat(actual_likelihood_em,len(likelihoods_em)), label='Actual')	
 plt.grid(True)
 plt.legend(loc='upper right')
+
+
+############## DISTRIBUTION ####################
+
+plt.figure('Distribution')
+plt.title(r'Distribution and prediction')#$(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
+for i, alpha in enumerate(alphas):
+	#for j in range(N):
+	for k in range(K):
+		plt.plot(X_classes[k][0], X_classes[k][1], '.', color=color_dis[k])
+	
+	theta = np.linspace(0, 2*np.pi, 1000)
+	for k in range(K):
+		w, v = np.linalg.eig(sigma_est_daem[k])
+		x_pts = 3*(w[0]**0.5)*np.cos(theta)
+		y_pts = 3*(w[1]**0.5)*np.sin(theta)
+		x1_pts = v[0][0]*x_pts + v[0][1]*y_pts
+		y1_pts = v[1][0]*x_pts + v[1][1]*y_pts
+		x1_pts += mu_est_daem[-1][k][0]; y1_pts += mu_est_daem[-1][k][1];
+		plt.plot(x1_pts, y1_pts, color='black', label='DAEM')
+		w1, v1 = np.linalg.eig(sigma_est_em[k])
+		x_pts1 = 3*(w1[0]**0.5)*np.cos(theta)
+		y_pts1 = 3*(w1[1]**0.5)*np.sin(theta)
+		x1_pts1 = v1[0][0]*x_pts1 + v[0][1]*y_pts1
+		y1_pts1 = v1[1][0]*x_pts1 + v[1][1]*y_pts1
+		x1_pts1 += mu_est_em[-1][k][0]; y1_pts1 += mu_est_em[-1][k][1];
+		plt.plot(x1_pts1, y1_pts1, color='red', label='EM')
+plt.ylim([-100, 100])
+plt.xlim([-100, 100])
+plt.legend(loc='upper right')
+plt.grid(True)
+
 
 ################# END OF PLOTS ################
 

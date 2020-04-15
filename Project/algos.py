@@ -46,8 +46,8 @@ class Solver:
 		self.sigma = sigma
 		self.alpha = alpha
 	
-	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.2, 0.4, 0.6, 0.9, 1.2, 1.0], 
-				 history_length=100, tolerance_history_thresh=1e-6, max_steps=10000):
+	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.6, 0.9, 1.2, 1.0], 
+				 history_length=100, tolerance_history_thresh=1e-9, max_steps=10000):
 		"""
 			Deterministic Anti - Annealing EM Algorithm for k n-dimensional Gaussians
 			X.shape = n x N. Xi is n-dimensional. N data points 
@@ -64,7 +64,6 @@ class Solver:
 			alpha_est = np.array([1./K for j in range(K)])
 		if mu_est is None:
 			mu_est = [X[:, int(np.random.random()*N)].reshape((n,1)) for j in range(K)]
-			print(mu_est)
 		if sigma_est is None:
 			sample_mean = np.sum(X, axis=0)/N
 			X_mu = X - sample_mean
@@ -95,13 +94,10 @@ class Solver:
 			llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
 
 			# define h[k, i] = probability that xi belongs to class k
+			# however, the following is being done for numerical stability
 			h = np.array([(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/(llh_1+1e-9) for k in range(K-1)])
 			h = np.append(h, [(1 - np.sum(h, axis=0))], axis=0)
-			# however, the following is being done for numerical stability
-			# h = np.array([(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/llh_1 for k in range(K-1)])
-			# h = np.append(h, [(1 - np.sum(h, axis=1))], axis=0)
-			# NOT NEEDED ^^^^
-
+			
 			tolerance = np.ones(N)
 			tolerance_history = np.ones(history_length)
 
@@ -123,8 +119,9 @@ class Solver:
 
 					# Perturb the mu estimates so they split
 					# if the max change in the past 100 iterations is not much then
-					if np.max(tolerance_history) <= tolerance_history_thresh:
-						mu_est[k] += np.random.randn(n, 1) 
+					# if np.max(tolerance_history) <= tolerance_history_thresh:
+					# 	wsig, vsig = np.linalg.eig(sigma_est[k]) # can optimize, store once calculated
+					# 	mu_est[k] = vsig.T.dot(vsig.dot(mu_est[k]) + 1e-3*np.random.normal()*wsig.reshape((n,1))**0.5) 
 
 					X_mu = X - mu_est[k]
 					h_X_mu = h[k]*X_mu
@@ -138,6 +135,7 @@ class Solver:
 
 				llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
 
+				# The following is being done for numerical stability
 				h = [(alpha_est[k]**beta)*P_gaussian(X, mu_est[k], sigma_est[k], beta)/(llh_1+1e-9) for k in range(K-1)]
 				h = np.append(h, [(1 - np.sum(h, axis=0))], axis=0)
 
