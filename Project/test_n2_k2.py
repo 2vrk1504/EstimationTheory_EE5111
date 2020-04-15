@@ -1,34 +1,32 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
 from algos import Solver
-# from algos_arvind import Solver
 
-
-N = 2000		# number of samples
-K = 2			# number of mixed Gaussians
+N = 1000		# number of samples
+K = 4			# number of mixed Gaussians
 n = 2			# dimension
 mu = np.array([
-	np.array([[-20],
+	np.array([[-40],
 			  [0]]),
 	np.array([[10],
 			  [0]]),
-	# np.array([[0],
-	# 		  [5]]),
-	# np.array([[-5],
-	# 		  [0]])
+	np.array([[30],
+			  [5]]),
+	np.array([[-5],
+			  [30]])
 	])	
 sigma = np.array([		# covariance matrices
+	np.array([[100, 9],
+			  [9, 100]]), 
 	np.array([[100, 0],
 			  [0, 100]]), 
-	np.array([[100, 0],
-			  [0, 100]]), 
-	# np.array([[1, 0.95],
-	# 		  [0.95, 1]]), 
-	# np.array([[1, 0.95],
-	# 		  [0.95, 1]])
+	np.array([[9, 2],
+			  [2, 1]]), 
+	np.array([[1, 2],
+			  [2, 9]])
 ])	
 
-alphas = [[0.1, 0.9]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
+alphas = [[0.1, 0.6, 0.2, 0.1]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
 def toss(alpha):
 	x = np.random.random()
@@ -40,7 +38,7 @@ def toss(alpha):
 			last += alpha[k]
 
 colors = ['red', 'pink', 'brown']
-color_dis = ['green', 'blue']
+color_dis = ['green', 'blue', 'orange', 'yellow']
  
 errorss_daem = []; alphass_daem = []; muss_daem = [];
 errorss_em = []; alphass_em = []; muss_em = []
@@ -58,7 +56,7 @@ for alpha in alphas:
 		k_chosen = toss(alpha)
 		my_mu = mu[k_chosen]
 		wsig, vsig = decomps[k_chosen]
-		sample = my_mu + vsig.dot((wsig**0.5)*np.random.randn(n, 1))
+		sample = my_mu + vsig.dot((wsig**0.5).reshape((n,1))*np.random.randn(n, 1))
 		X_classes[k_chosen] = np.append(X_classes[k_chosen], sample, axis=1)
 		X = np.append(X, sample, axis=1)
 
@@ -203,8 +201,7 @@ for i, alpha in enumerate(alphas):
 		y1_pts1 = v1[1][0]*x_pts1 + v[1][1]*y_pts1
 		x1_pts1 += mu_est_em[-1][k][0]; y1_pts1 += mu_est_em[-1][k][1];
 		plt.plot(x1_pts1, y1_pts1, color='red', label='EM')
-plt.ylim([-100, 100])
-plt.xlim([-100, 100])
+
 plt.legend(loc='upper right')
 plt.grid(True)
 

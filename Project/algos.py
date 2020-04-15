@@ -46,6 +46,7 @@ class Solver:
 		self.sigma = sigma
 		self.alpha = alpha
 	
+	# alternate beta = [0.05,0.1, 0.2,0.5, 0.6, 0.9, 1.2,1.1,1.05,1.0]
 	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.6, 0.9, 1.2, 1.0], 
 				 history_length=100, tolerance_history_thresh=1e-9, max_steps=10000):
 		"""
@@ -121,7 +122,7 @@ class Solver:
 					# if the max change in the past 100 iterations is not much then
 					# if np.max(tolerance_history) <= tolerance_history_thresh:
 					# 	wsig, vsig = np.linalg.eig(sigma_est[k]) # can optimize, store once calculated
-					# 	mu_est[k] = vsig.T.dot(vsig.dot(mu_est[k]) + 1e-3*np.random.normal()*wsig.reshape((n,1))**0.5) 
+					# 	mu_est[k] = vsig.dot(vsig.T.dot(mu_est[k]) + 1e-3*np.random.normal()*wsig.reshape((n,1))**0.5) 
 
 					X_mu = X - mu_est[k]
 					h_X_mu = h[k]*X_mu
