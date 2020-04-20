@@ -2,31 +2,81 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from algos import Solver
 
-N = 1000		# number of samples
-K = 4			# number of mixed Gaussians
+N = 100000		# number of samples
+K = 16			# number of mixed Gaussians
 n = 2			# dimension
 mu = np.array([
-	np.array([[-40],
-			  [0]]),
+	np.array([[-10],
+			  [10]]),
 	np.array([[10],
-			  [0]]),
+			  [10]]),
+	np.array([[-10],
+			  [-10]]),
+	np.array([[10],
+			  [-10]]),
+	np.array([[-30],
+			  [30]]),
 	np.array([[30],
-			  [5]]),
-	np.array([[-5],
-			  [30]])
+			  [30]]),
+	np.array([[-30],
+			  [-30]]),
+	np.array([[30],
+			  [-30]]),
+
+	# CROSS
+	np.array([[-10],
+			  [30]]),
+	np.array([[10],
+			  [30]]),
+	np.array([[-10],
+			  [-30]]),
+	np.array([[10],
+			  [-30]]),
+	np.array([[-30],
+			  [10]]),
+	np.array([[30],
+			  [10]]),
+	np.array([[-30],
+			  [-10]]),
+	np.array([[30],
+			  [-10]]),
 	])	
 sigma = np.array([		# covariance matrices
-	np.array([[100, 9],
-			  [9, 100]]), 
-	np.array([[100, 0],
-			  [0, 100]]), 
+	np.array([[6.25, 4.5],
+			  [4.5, 6.25]]), 
+	np.array([[10, 0],
+			  [0, 10]]), 
+	np.array([[9, 2],
+			  [2, 1]]), 
+	np.array([[1, 2],
+			  [2, 9]]),
+	np.array([[6.25, 4.5],
+			  [4.5, 6.25]]), 
+	np.array([[10, 0],
+			  [0, 10]]), 
+	np.array([[9, 2],
+			  [2, 1]]), 
+	np.array([[1, 2],
+			  [2, 9]]),
+	np.array([[6.25, 4.5],
+			  [4.5, 6.25]]), 
+	np.array([[10, 0],
+			  [0, 10]]), 
+	np.array([[9, 2],
+			  [2, 1]]), 
+	np.array([[1, 2],
+			  [2, 9]]),
+	np.array([[6.25, 4.5],
+			  [4.5, 6.25]]), 
+	np.array([[10, 0],
+			  [0, 10]]), 
 	np.array([[9, 2],
 			  [2, 1]]), 
 	np.array([[1, 2],
 			  [2, 9]])
-])	
+])*0.1
 
-alphas = [[0.1, 0.6, 0.2, 0.1]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
+alphas = [[1/K for k in range(K)]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
 def toss(alpha):
 	x = np.random.random()
@@ -38,7 +88,8 @@ def toss(alpha):
 			last += alpha[k]
 
 colors = ['red', 'pink', 'brown']
-color_dis = ['green', 'blue', 'orange', 'yellow']
+color_dis = ['green', 'blue', 'orange', 'yellow', 'cyan', 'magenta', 'indigo', 'red', 'pink', 'brown',
+			 'black', 'violet', 'gray', 'maroon', 'blue', 'gold']
  
 errorss_daem = []; alphass_daem = []; muss_daem = [];
 errorss_em = []; alphass_em = []; muss_em = []
@@ -82,6 +133,7 @@ for alpha in alphas:
 	bs.append(beta_step)
 	print('DAEM')
 	print('Steps:\n{}\n alpha_est: {}\nmu_est:\n{}\nsigma_est:\n{}\n\n'.format(steps, alpha_est_daem[-1], mu_est_daem[-1], sigma_est_daem))
+	'''
 	alpha_est_em, mu_est_em, sigma_est_em, errors_em, steps, __, likelihoods_em, actual_likelihood_em = solver.EM_GMM(X=X, thresh=1e-10, K=K, max_steps=5000)
 	errorss_em.append(errors_em)
 	alphass_em.append(alpha_est_em)
@@ -89,6 +141,7 @@ for alpha in alphas:
 	print('EM')
 	print('Steps:\n{}\nalpha_est: {}\nmu_est:\n{}\nsigma_est:\n{}\n\n'.format(steps, alpha_est_em[-1], mu_est_em[-1], sigma_est_em))
 	print()
+	'''
 
 ################## DAEM PLOTS ###############################
 
@@ -100,7 +153,7 @@ for i, alpha in enumerate(alphas):
 	for _bs in bs[i]:
 		plt.axvline(x=_bs[1], color=colors[i], ls=':', lw=1, label=r'$\beta=$'+str(_bs[0]))
 plt.grid(True)
-plt.legend(loc='upper right')
+# plt.legend(loc='upper right')
 
 plt.figure('alpha')
 plt.subplot(1,2,1)
@@ -112,7 +165,7 @@ for i, alpha in enumerate(alphas):
 	for _bs in bs[i]:
 		plt.axvline(x=_bs[1], color=colors[i], ls=':', lw=1, label=r'$\beta=$'+str(_bs[0]))
 plt.grid(True)
-plt.legend(loc='upper right')
+# plt.legend(loc='upper right')
 '''
 plt.figure('Mu')
 plt.subplot(1,2,1)
@@ -133,17 +186,17 @@ for i, alpha in enumerate(alphas):
 	plt.plot(likelihoods_daem, label=r'$\alpha=$'+str(alpha))
 plt.plot(np.repeat(actual_likelihood_daem,len(likelihoods_daem)), label='Actual')	
 plt.grid(True)
-plt.legend(loc='upper right')
+# plt.legend(loc='upper right')
 
 ##################### EM PLOTS #################################
-
+'''
 plt.figure('Error')
 plt.subplot(1,2,2)
 plt.title(r'EM Error vs. Iterations, ')#$(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
 for i, alpha in enumerate(alphas):
 	plt.plot(errorss_em[i], 'x-', label=r'$\alpha=$'+str(alpha))
 plt.grid(True)
-plt.legend(loc='upper right')
+# plt.legend(loc='upper right')
 
 plt.figure('alpha')
 plt.subplot(1,2,2)
@@ -153,9 +206,8 @@ for i, alpha in enumerate(alphas):
 	for k in range(len(alpha)):
 		plt.plot(alphass_em[i][:,k], label=r'$\alpha=$'+str(alpha[k]))
 plt.grid(True)
-plt.legend(loc='upper right')
+# plt.legend(loc='upper right')
 
-'''
 plt.figure('Mu')
 plt.subplot(1,2,2)
 muss_em = np.array(muss_em)
@@ -165,7 +217,7 @@ for i, alpha in enumerate(alphas):
 	plt.plot(muss_em[i][-1][0][0,0], muss_em[i][-1][1][0,0],'x-', color='green')
 plt.grid(True)
 plt.legend(loc='upper right')
-'''
+
 plt.figure('Likelihood')
 plt.subplot(1,2,2)
 plt.title(r'EM Likelihoods vs. Iterations, ')#$(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
@@ -173,8 +225,8 @@ for i, alpha in enumerate(alphas):
 	plt.plot(likelihoods_em, label=r'$\alpha=$'+str(alpha))
 plt.plot(np.repeat(actual_likelihood_em,len(likelihoods_em)), label='Actual')	
 plt.grid(True)
-plt.legend(loc='upper right')
-
+# plt.legend(loc='upper right')
+'''
 
 ############## DISTRIBUTION ####################
 
@@ -194,15 +246,15 @@ for i, alpha in enumerate(alphas):
 		y1_pts = v[1][0]*x_pts + v[1][1]*y_pts
 		x1_pts += mu_est_daem[-1][k][0]; y1_pts += mu_est_daem[-1][k][1];
 		plt.plot(x1_pts, y1_pts, color='black', label='DAEM')
-		w1, v1 = np.linalg.eig(sigma_est_em[k])
-		x_pts1 = 3*(w1[0]**0.5)*np.cos(theta)
-		y_pts1 = 3*(w1[1]**0.5)*np.sin(theta)
-		x1_pts1 = v1[0][0]*x_pts1 + v[0][1]*y_pts1
-		y1_pts1 = v1[1][0]*x_pts1 + v[1][1]*y_pts1
-		x1_pts1 += mu_est_em[-1][k][0]; y1_pts1 += mu_est_em[-1][k][1];
-		plt.plot(x1_pts1, y1_pts1, color='red', label='EM')
+		# w1, v1 = np.linalg.eig(sigma_est_em[k])
+		# x_pts1 = 3*(w1[0]**0.5)*np.cos(theta)
+		# y_pts1 = 3*(w1[1]**0.5)*np.sin(theta)
+		# x1_pts1 = v1[0][0]*x_pts1 + v[0][1]*y_pts1
+		# y1_pts1 = v1[1][0]*x_pts1 + v[1][1]*y_pts1
+		# x1_pts1 += mu_est_em[-1][k][0]; y1_pts1 += mu_est_em[-1][k][1];
+		# plt.plot(x1_pts1, y1_pts1, color='red', label='EM')
 
-plt.legend(loc='upper right')
+# plt.legend(loc='upper right')
 plt.grid(True)
 
 

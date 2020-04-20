@@ -47,7 +47,7 @@ class Solver:
 		self.alpha = alpha
 	
 	# alternate beta = [0.05,0.1, 0.2,0.5, 0.6, 0.9, 1.2,1.1,1.05,1.0]
-	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.6, 0.9, 1.2, 1.0], 
+	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.65, 0.75, 0.8, 0.9, 1.0], 
 				 history_length=100, tolerance_history_thresh=1e-9, max_steps=10000):
 		"""
 			Deterministic Anti - Annealing EM Algorithm for k n-dimensional Gaussians
@@ -75,10 +75,10 @@ class Solver:
 			sigma_est = np.array([np.array(cov) for j in range(K)])
 
  
-		actual_likelihood = np.sum(np.log(likelihood(self.alpha, X, self.mu, self.sigma, 1) + 1e-11)) # With actual parameters
+		actual_likelihood = np.sum(np.log(likelihood(self.alpha, X, self.mu, self.sigma, 1) + 1e-11))/N # With actual parameters
 	
 		errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est)) # error of first estimate
-		likelihoods.append(np.sum(np.log(likelihood(alpha_est, X, mu_est, sigma_est, 1))))
+		likelihoods.append(np.sum(np.log(likelihood(alpha_est, X, mu_est, sigma_est, 1)))/N)
 		alpha_ests.append(np.array(alpha_est)); mu_ests.append(np.array(mu_est))
 
 		started = False
@@ -88,7 +88,7 @@ class Solver:
 			if beta!=1 and started:
 				for k in range(K):
 					wsig, vsig = np.linalg.eig(sigma_est[k])
-					mu_est[k] = vsig.T.dot(vsig.dot(mu_est[k]) + np.random.normal()*wsig.reshape((n,1))**0.5/2)
+					mu_est[k] = vsig.T.dot(vsig.dot(mu_est[k]) + K*np.random.normal()*wsig.reshape((n,1))**0.5)
 
 			started = True
 			llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
@@ -146,7 +146,7 @@ class Solver:
 				tolerance_history = np.append(tolerance_history[1:], [np.max(tolerance)])
 
 				errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est))
-				likelihoods.append(np.sum(log_ll1)) 
+				likelihoods.append(np.sum(log_ll1)/N) 
 				alpha_ests.append(np.array(alpha_est)); mu_ests.append(np.array(mu_est))
 			print("Steps {} ".format(steps))
 			beta_step.append((beta, steps-1))
