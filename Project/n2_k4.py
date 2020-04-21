@@ -7,7 +7,7 @@ N = 1000		# number of samples
 K = 4			# number of mixed Gaussians
 n = 2			# dimension
 
-
+# 4 cluster case
 mu=np.array([[[2],[1]],[[-2],[1]],[[2],[-1]],[[-2],[-1]]])
 #sigma=np.array([0.5*np.identity(2) for j in range(K)])/100
 
@@ -24,6 +24,7 @@ sigma = np.array([		# covariance matrices
 
 alpha=[0.05,0.5,0.15,0.3] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
+# 2 Clusters case
 '''
 mu=np.array([[[2],[1]],[[-2],[1]]])
 sigma = np.array([		# covariance matrices
@@ -34,6 +35,8 @@ sigma = np.array([		# covariance matrices
 
 alpha=[0.1,0.9]
 '''
+# Data Generation
+
 l=[]
 X=[]
 for i in range(N):
