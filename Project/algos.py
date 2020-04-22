@@ -1,4 +1,5 @@
 import numpy as np 
+import matplotlib.pyplot as plt
 
 def P_gaussian(x, mu, sigma, beta):
 	n, N = x.shape
@@ -46,9 +47,58 @@ class Solver:
 		self.sigma = sigma
 		self.alpha = alpha
 	
+	def mu_sampler(self, X, K):
+		n, N = X.shape
+		psn = int(K**(1/n)) # perfect a^n = K number... for clustering
+		if psn**n < K:
+			psn = int(int(psn) + 1)
+		range_in_dim = np.empty((n,psn+1))
+		for i in range(n):
+			range_in_dim[i][0] = np.min(X[i])
+			range_in_dim[i][-1] = np.max(X[i])
+			c_size = (range_in_dim[i][-1]-range_in_dim[i][0])/psn # approximate cluster size
+			for j in range(1,psn):
+				range_in_dim[i][j] = range_in_dim[i][j-1] + c_size
+		mu_est = []
+		def k_in_base_psn(k):
+			ii = np.zeros(n, dtype=np.int)
+			i = 0
+			while k > 0:
+				ii[i] = k%psn
+				k = k//psn
+				i += 1
+			return ii
+		for k in range(K):
+			samples = X
+			ii = k_in_base_psn(k)
+			for i in range(n):
+				samples = samples[:, np.where(np.logical_and(samples[i]<=range_in_dim[i][ii[i]+1],samples[i]>=range_in_dim[i][ii[i]]))[0]]
+			if samples.size > 0 and len(mu_est) < K:
+				mu_est.append(samples[:, int(np.random.rand()*len(samples))].reshape((n,1)))
+		if len(mu_est) < K:
+			for k in range(len(mu_est), K):
+				mu_est.append(X[:, int(np.random.rand()*len(samples))].reshape((n,1)))
+		return np.array(mu_est)
+
+	def draw_current(self, mu, sigma, X, K):
+		plt.figure('Distribution')
+		plt.title('First iteration')
+		plt.plot(X[0], X[1], '.', color='blue')
+		plt.grid(True)
+		theta = np.linspace(0, 2*np.pi, 1000)
+		for k in range(K):
+			w, v = np.linalg.eig(sigma[k])
+			x_pts = 3*(w[0]**0.5)*np.cos(theta)
+			y_pts = 3*(w[1]**0.5)*np.sin(theta)
+			x1_pts = v[0][0]*x_pts + v[0][1]*y_pts
+			y1_pts = v[1][0]*x_pts + v[1][1]*y_pts
+			x1_pts += mu[k][0]; y1_pts += mu[k][1];
+			plt.plot(x1_pts, y1_pts, color='black', label='DAEM')
+		plt.show()
+
 	# alternate beta = [0.05,0.1, 0.2,0.5, 0.6, 0.9, 1.2,1.1,1.05,1.0]
-	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.65, 0.75, 0.8, 0.9, 1.0], 
-				 history_length=100, tolerance_history_thresh=1e-9, max_steps=10000):
+	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.2, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], 
+				 history_length=100, tolerance_history_thresh=1e-6, max_steps=10000):
 		"""
 			Deterministic Anti - Annealing EM Algorithm for k n-dimensional Gaussians
 			X.shape = n x N. Xi is n-dimensional. N data points 
@@ -59,21 +109,30 @@ class Solver:
 		alpha_ests = []; mu_ests=[]; likelihoods = []
 		beta_step = []
 		steps = 0
+		min_var = 0.1
+		p = 2 # change this according to the prior det(|Sigma_k|)^-p
 
 		# Initial estimates
 		if alpha_est is None:
 			alpha_est = np.array([1./K for j in range(K)])
 		if mu_est is None:
-			mu_est = [X[:, int(np.random.random()*N)].reshape((n,1)) for j in range(K)]
+			mu_est = self.mu_sampler(X, K)
+			# ii = np.arange(N)
+			# np.random.shuffle(ii)
+			# mu_est = np.empty((K, n, 1))
+			# for k in range(K):
+			# 	mu_est[k] = np.sum(X[:, ii[k:min(N,k+K)]], axis=1).reshape((n,1))/min(N,k+K)
+			# mu_est = [X[:, int(np.random.random()*N)].reshape((n,1)) for j in range(K)]
 		if sigma_est is None:
 			sample_mean = np.sum(X, axis=0)/N
 			X_mu = X - sample_mean
 			cov = np.zeros((n,n))
 			for i in range(n):
 				cov[i] += np.sum(X_mu[i]*X_mu, axis=1)
-			cov /= N
+			cov /= (N*K*K)
 			sigma_est = np.array([np.array(cov) for j in range(K)])
 
+		self.draw_current(mu_est, sigma_est, X, K)
  
 		actual_likelihood = np.sum(np.log(likelihood(self.alpha, X, self.mu, self.sigma, 1) + 1e-11))/N # With actual parameters
 	
@@ -85,10 +144,12 @@ class Solver:
 		for beta in betas:	
 			print('Maximization for beta = {}'.format(beta))
 
-			if beta!=1 and started:
-				for k in range(K):
-					wsig, vsig = np.linalg.eig(sigma_est[k])
-					mu_est[k] = vsig.T.dot(vsig.dot(mu_est[k]) + K*np.random.normal()*wsig.reshape((n,1))**0.5)
+			decomps = [np.linalg.eig(sigma_est[k]) for k in range(K)]
+
+			# if beta!=1 and started:
+			# 	for k in range(K):
+			# 		wsig, vsig = decomps[k]
+			# 		mu_est[k] = vsig.T.dot(vsig.dot(mu_est[k]) + 1*np.random.normal(n,1)*wsig.reshape((n,1))**0.5)
 
 			started = True
 			llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
@@ -104,14 +165,13 @@ class Solver:
 
 			if beta == 1:
 				thresh = 1e-10
-				tolerance_history_thresh = 1e-3
+				# tolerance_history_thresh = 1e-6
 
 			while tolerance_history[-1] >= thresh and steps <= max_steps:
 				steps += 1
 				print("Step {}".format(steps), end='\r')
 				llh_00 = llh_01.copy()
 				llh_0 = llh_1.copy()
-				mu_prev = mu_est.copy()
 
 				for k in range(K):
 					h_tot_k = np.sum(h[k])
@@ -121,16 +181,20 @@ class Solver:
 					# Perturb the mu estimates so they split
 					# if the max change in the past 100 iterations is not much then
 					# if np.max(tolerance_history) <= tolerance_history_thresh:
-					# 	wsig, vsig = np.linalg.eig(sigma_est[k]) # can optimize, store once calculated
-					# 	mu_est[k] = vsig.dot(vsig.T.dot(mu_est[k]) + 1e-3*np.random.normal()*wsig.reshape((n,1))**0.5) 
+					# 	wsig, vsig = decomps[k] # can optimize, store once calculated
+					# 	mu_est[k] = vsig.dot(vsig.T.dot(mu_est[k]) + 1*np.random.normal(n,1)*wsig.reshape((n,1))**0.5) 
 
 					X_mu = X - mu_est[k]
 					h_X_mu = h[k]*X_mu
 					for i in range(n):
 						sigma_est[k][i] = np.sum(X_mu[i]*h_X_mu, axis=1)
-					sigma_est[k] /= (h_tot_k + 1e-9)
-					sigma_est[k] += 1e-6 * np.eye(n)
+					sigma_est[k] /= (1e-19 + h_tot_k + p)
+					if np.min(np.diag(sigma_est[k])) < min_var:
+						sigma_est[k] += min_var * np.eye(n)
+					# sigma_est[k] = 6 * np.eye(n)
 					alpha_est[k] = h_tot_k/N
+
+				decomps = [np.linalg.eig(sigma_est[k]) for k in range(K)]
 
 				llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
 

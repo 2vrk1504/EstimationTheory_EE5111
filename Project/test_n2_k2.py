@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from algos import Solver
 
-N = 100000		# number of samples
-K = 16			# number of mixed Gaussians
+N = 100		# number of samples
+K = 4			# number of mixed Gaussians
 n = 2			# dimension
 mu = np.array([
 	np.array([[-10],
@@ -14,33 +14,33 @@ mu = np.array([
 			  [-10]]),
 	np.array([[10],
 			  [-10]]),
-	np.array([[-30],
-			  [30]]),
-	np.array([[30],
-			  [30]]),
-	np.array([[-30],
-			  [-30]]),
-	np.array([[30],
-			  [-30]]),
+	# np.array([[-30],
+	# 		  [30]]),
+	# np.array([[30],
+	# 		  [30]]),
+	# np.array([[-30],
+	# 		  [-30]]),
+	# np.array([[30],
+	# 		  [-30]]),
 
-	# CROSS
-	np.array([[-10],
-			  [30]]),
-	np.array([[10],
-			  [30]]),
-	np.array([[-10],
-			  [-30]]),
-	np.array([[10],
-			  [-30]]),
-	np.array([[-30],
-			  [10]]),
-	np.array([[30],
-			  [10]]),
-	np.array([[-30],
-			  [-10]]),
-	np.array([[30],
-			  [-10]]),
-	])	
+	# # CROSS
+	# np.array([[-10],
+	# 		  [30]]),
+	# np.array([[10],
+	# 		  [30]]),
+	# np.array([[-10],
+	# 		  [-30]]),
+	# np.array([[10],
+	# 		  [-30]]),
+	# np.array([[-30],
+	# 		  [10]]),
+	# np.array([[30],
+	# 		  [10]]),
+	# np.array([[-30],
+	# 		  [-10]]),
+	# np.array([[30],
+	# 		  [-10]]),
+	])
 sigma = np.array([		# covariance matrices
 	np.array([[6.25, 4.5],
 			  [4.5, 6.25]]), 
@@ -50,31 +50,31 @@ sigma = np.array([		# covariance matrices
 			  [2, 1]]), 
 	np.array([[1, 2],
 			  [2, 9]]),
-	np.array([[6.25, 4.5],
-			  [4.5, 6.25]]), 
-	np.array([[10, 0],
-			  [0, 10]]), 
-	np.array([[9, 2],
-			  [2, 1]]), 
-	np.array([[1, 2],
-			  [2, 9]]),
-	np.array([[6.25, 4.5],
-			  [4.5, 6.25]]), 
-	np.array([[10, 0],
-			  [0, 10]]), 
-	np.array([[9, 2],
-			  [2, 1]]), 
-	np.array([[1, 2],
-			  [2, 9]]),
-	np.array([[6.25, 4.5],
-			  [4.5, 6.25]]), 
-	np.array([[10, 0],
-			  [0, 10]]), 
-	np.array([[9, 2],
-			  [2, 1]]), 
-	np.array([[1, 2],
-			  [2, 9]])
-])*0.1
+	# np.array([[6.25, 4.5],
+	# 		  [4.5, 6.25]]), 
+	# np.array([[10, 0],
+	# 		  [0, 10]]), 
+	# np.array([[9, 2],
+	# 		  [2, 1]]), 
+	# np.array([[1, 2],
+	# 		  [2, 9]]),
+	# np.array([[6.25, 4.5],
+	# 		  [4.5, 6.25]]), 
+	# np.array([[10, 0],
+	# 		  [0, 10]]), 
+	# np.array([[9, 2],
+	# 		  [2, 1]]), 
+	# np.array([[1, 2],
+	# 		  [2, 9]]),
+	# np.array([[6.25, 4.5],
+	# 		  [4.5, 6.25]]), 
+	# np.array([[10, 0],
+	# 		  [0, 10]]), 
+	# np.array([[9, 2],
+	# 		  [2, 1]]), 
+	# np.array([[1, 2],
+	# 		  [2, 9]])
+])/3
 
 alphas = [[1/K for k in range(K)]] #np.linspace(0.6, 0.6, 1) # mixing coefficients
 
@@ -126,7 +126,8 @@ for alpha in alphas:
 
 	print('Actual:')
 	print('alpha: {}\nmu:\n{}\nsigma:\n{}\n\n'.format(alpha, mu, sigma))
-	alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-4, K=K, max_steps=5000)
+	alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-6, K=K, max_steps=5000)
+							#mu_est=mu)
 	errorss_daem.append(errors_daem)
 	alphass_daem.append(alpha_est_daem)
 	muss_daem.append(mu_est_daem)
