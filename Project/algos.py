@@ -101,7 +101,7 @@ class Solver:
 
 	# alternate beta = [0.05,0.1, 0.2,0.5, 0.6, 0.9, 1.2,1.1,1.05,1.0]
 	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.8, 0.9, 1.2, 1.0], 
-				 history_length=100, tolerance_history_thresh=1e-6, max_steps=10000):
+				 history_length=100, min_thresh=1e-10, tolerance_history_thresh=1e-6, max_steps=10000):
 		"""
 			Deterministic Anti - Annealing EM Algorithm for k n-dimensional Gaussians
 			X.shape = n x N. Xi is n-dimensional. N data points 
@@ -162,8 +162,8 @@ class Solver:
 			ll_history = np.ones(history_length)
 
 			if beta == 1:
-				thresh = 1e-10
-				tolerance_history_thresh = 1e-9
+				thresh = min_thresh
+				tolerance_history_thresh = min_thresh*10
 
 			while tolerance_history[-1] >= thresh and steps <= max_steps:
 				steps += 1
@@ -236,4 +236,33 @@ class Solver:
 		"""
 			Regular Expectation Maximization
 		"""
-		return self.DAEM_GMM(X=X, thresh=thresh, K=K, mu_est=mu_est, sigma_est=sigma_est, alpha_est=alpha_est, betas=[1], max_steps=max_steps)
+		return self.DAEM_GMM(X=X, thresh=thresh, min_thresh=thresh, K=K, mu_est=mu_est, sigma_est=sigma_est, alpha_est=alpha_est, betas=[1], max_steps=max_steps)
+
+
+
+	def fit_data(self, X, thresh=1e-10, min_thresh=1e-10, max_steps=5000, Kmin=2, Kmax=10, algo='DAEM'):
+		"""
+			Bayesian Information Criterion to best fit data
+		"""
+		n, N = X.shape
+		min_BIC = 1e20 # start with max
+		k_best = Kmin
+		if algo == 'EM':
+			for k in range(Kmin, Kmax+1):
+				result = self.EM_GMM(X=X, thresh=thresh, K=k, max_steps=5000)
+				bic = 2*k*np.log(N) - 2*result[6][-1]*N
+				if bic < min_BIC:
+					k_best = k
+					min_BIC = bic
+
+		else:
+			for k in range(Kmin, Kmax+1):
+				result = self.DAEM_GMM(X=X, thresh=thresh, min_thresh=min_thresh, K=k, max_steps=5000)
+				bic = 2*k*np.log(N) - 2*result[6][-1]*N
+				if bic < min_BIC:
+					k_best = k
+					min_BIC = bic
+
+		return k_best, result
+
+
