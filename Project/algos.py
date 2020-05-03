@@ -163,7 +163,7 @@ class Solver:
 
 			if beta == 1:
 				thresh = 1e-10
-				tolerance_history_thresh = 1e-7
+				tolerance_history_thresh = 1e-9
 
 			while tolerance_history[-1] >= thresh and steps <= max_steps:
 				steps += 1

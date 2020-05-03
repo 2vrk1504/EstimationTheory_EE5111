@@ -85,8 +85,8 @@ for i in range(K):
 
 
 # KL Divergence
-dkl_daem = -np.log(4*np.pi*g) - np.sum(cauchy_pdf*dx*np.log(yy_daem))
-dkl_em = -np.log(4*np.pi*g) - np.sum(cauchy_pdf*dx*np.log(yy_em))
+dkl_daem = np.sum(cauchy_pdf*dx*np.log(cauchy_pdf/yy_daem))
+dkl_em = np.sum(cauchy_pdf*dx*np.log(cauchy_pdf/yy_em))
 
 print()
 print('KL Divergence')
