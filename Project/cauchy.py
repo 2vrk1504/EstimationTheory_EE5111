@@ -73,6 +73,7 @@ plt.grid(True)
 #plotting both estimates
 s=X
 xx=np.linspace(-1000,1000,100*N)
+dx=2000/100/N
 yy_daem=np.zeros(100*N)
 yy_em=np.zeros(100*N)
 
@@ -84,8 +85,8 @@ for i in range(K):
 
 
 # KL Divergence
-dkl_daem = -np.log(4*np.pi*g) - np.sum(cauchy_pdf*np.log(yy_daem))
-dkl_em = -np.log(4*np.pi*g) - np.sum(cauchy_pdf*np.log(yy_em))
+dkl_daem = -np.log(4*np.pi*g) - np.sum(cauchy_pdf*dx*np.log(yy_daem))
+dkl_em = -np.log(4*np.pi*g) - np.sum(cauchy_pdf*dx*np.log(yy_em))
 
 print()
 print('KL Divergence')
