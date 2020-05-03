@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 def P_gaussian(x, mu, sigma, beta):
 	n, N = x.shape
 	wsig, vsig = np.linalg.eig(sigma)
-	sig_inv = vsig.T.dot(np.diag(1/(wsig+1e-9)).dot(vsig)) # sigma inverse
+	sig_inv = vsig.T.dot(np.diag(1/(wsig)).dot(vsig)) # sigma inverse
 	x_mu = x - mu
 	xx = sig_inv[:, 0].reshape((n, 1)) * x_mu[0] 
 	for i in range(1,n):
@@ -74,7 +74,10 @@ class Solver:
 			for i in range(n):
 				samples = samples[:, np.where(np.logical_and(samples[i]<=range_in_dim[i][ii[i]+1],samples[i]>=range_in_dim[i][ii[i]]))[0]]
 			if samples.size > 0 and len(mu_est) < K:
-				mu_est.append(samples[:, int(np.random.rand()*len(samples))].reshape((n,1)))
+				random_indices = np.arange(len(samples))
+				np.random.shuffle(random_indices)
+				mean = np.sum(samples[:, random_indices[:10]], axis=1).reshape((n,1))/random_indices.size
+				mu_est.append(mean)
 		if len(mu_est) < K:
 			for k in range(len(mu_est), K):
 				mu_est.append(X[:, int(np.random.rand()*len(samples))].reshape((n,1)))
@@ -97,7 +100,7 @@ class Solver:
 		plt.show()
 
 	# alternate beta = [0.05,0.1, 0.2,0.5, 0.6, 0.9, 1.2,1.1,1.05,1.0]
-	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.2, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], 
+	def DAEM_GMM(self, X, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.8, 0.9, 1.2, 1.0], 
 				 history_length=100, tolerance_history_thresh=1e-6, max_steps=10000):
 		"""
 			Deterministic Anti - Annealing EM Algorithm for k n-dimensional Gaussians
@@ -109,20 +112,14 @@ class Solver:
 		alpha_ests = []; mu_ests=[]; likelihoods = []
 		beta_step = []
 		steps = 0
-		min_var = 0.1
-		p = 2 # change this according to the prior det(|Sigma_k|)^-p
+		min_var = 1e-11
+		nu = -n-1 + 1e-11 #max(n, 8) # change this according to the prior det(|Sigma_k|)^-p
 
 		# Initial estimates
 		if alpha_est is None:
 			alpha_est = np.array([1./K for j in range(K)])
 		if mu_est is None:
 			mu_est = self.mu_sampler(X, K)
-			# ii = np.arange(N)
-			# np.random.shuffle(ii)
-			# mu_est = np.empty((K, n, 1))
-			# for k in range(K):
-			# 	mu_est[k] = np.sum(X[:, ii[k:min(N,k+K)]], axis=1).reshape((n,1))/min(N,k+K)
-			# mu_est = [X[:, int(np.random.random()*N)].reshape((n,1)) for j in range(K)]
 		if sigma_est is None:
 			sample_mean = np.sum(X, axis=0)/N
 			X_mu = X - sample_mean
@@ -131,8 +128,6 @@ class Solver:
 				cov[i] += np.sum(X_mu[i]*X_mu, axis=1)
 			cov /= (N*K*K)
 			sigma_est = np.array([np.array(cov) for j in range(K)])
-
-		self.draw_current(mu_est, sigma_est, X, K)
  
 		actual_likelihood = np.sum(np.log(likelihood(self.alpha, X, self.mu, self.sigma, 1) + 1e-11))/N # With actual parameters
 	
@@ -146,10 +141,12 @@ class Solver:
 
 			decomps = [np.linalg.eig(sigma_est[k]) for k in range(K)]
 
-			# if beta!=1 and started:
-			# 	for k in range(K):
-			# 		wsig, vsig = decomps[k]
-			# 		mu_est[k] = vsig.T.dot(vsig.dot(mu_est[k]) + 1*np.random.normal(n,1)*wsig.reshape((n,1))**0.5)
+			if beta!=1 and started:
+				print('noise added beta change')
+				print()
+				for k in range(K):
+					wsig, vsig = decomps[k]
+					mu_est[k] = vsig.T.dot(vsig.dot(mu_est[k]) + np.random.normal(n,1)*wsig.reshape((n,1))**0.5)
 
 			started = True
 			llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
@@ -162,10 +159,11 @@ class Solver:
 			
 			tolerance = np.ones(N)
 			tolerance_history = np.ones(history_length)
+			ll_history = np.ones(history_length)
 
 			if beta == 1:
 				thresh = 1e-10
-				# tolerance_history_thresh = 1e-6
+				tolerance_history_thresh = 1e-7
 
 			while tolerance_history[-1] >= thresh and steps <= max_steps:
 				steps += 1
@@ -176,28 +174,30 @@ class Solver:
 				for k in range(K):
 					h_tot_k = np.sum(h[k])
 					#print(h[k])
-					mu_est[k] = np.sum(h[k]*X, axis=1).reshape((n, 1))/(h_tot_k + 1e-9)
-
-					# Perturb the mu estimates so they split
-					# if the max change in the past 100 iterations is not much then
-					# if np.max(tolerance_history) <= tolerance_history_thresh:
-					# 	wsig, vsig = decomps[k] # can optimize, store once calculated
-					# 	mu_est[k] = vsig.dot(vsig.T.dot(mu_est[k]) + 1*np.random.normal(n,1)*wsig.reshape((n,1))**0.5) 
+					mu_est[k] = np.sum(h[k]*X, axis=1).reshape((n, 1))/(h_tot_k + 1e-19)
 
 					X_mu = X - mu_est[k]
 					h_X_mu = h[k]*X_mu
 					for i in range(n):
 						sigma_est[k][i] = np.sum(X_mu[i]*h_X_mu, axis=1)
-					sigma_est[k] /= (1e-19 + h_tot_k + p)
-					if np.min(np.diag(sigma_est[k])) < min_var:
-						sigma_est[k] += min_var * np.eye(n)
+					sigma_est[k] += min_var * np.eye(n)
+					sigma_est[k] /= (h_tot_k + nu + n + 1)
+					# if np.min(np.diag(sigma_est[k])) < min_var:
+					# 	sigma_est[k] += min_var * np.eye(n)
 					# sigma_est[k] = 6 * np.eye(n)
 					alpha_est[k] = h_tot_k/N
 
 				decomps = [np.linalg.eig(sigma_est[k]) for k in range(K)]
 
-				llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
+				# Perturb the mu estimates so they split
+				# if the max change in the past 100 iterations is not much then
+				if np.max(tolerance_history) <= tolerance_history_thresh:
+					wsig, vsig = decomps[k] # can optimize, store once calculated
+					print('noise added because of history')
+					mu_est[k] = vsig.dot(vsig.T.dot(mu_est[k]) + np.random.normal(n,1)*wsig.reshape((n,1))**0.5) 
 
+
+				llh_1 = likelihood(alpha_est, X, mu_est, sigma_est, beta)
 				llh_01 = likelihood(alpha_est, X, mu_est, sigma_est, 1)
 
 				# The following is being done for numerical stability
@@ -211,7 +211,21 @@ class Solver:
 
 				errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est))
 				likelihoods.append(np.sum(log_ll1)/N) 
+				ll_history = np.append(ll_history[1:], [likelihoods[-1]-likelihoods[-2]])
 				alpha_ests.append(np.array(alpha_est)); mu_ests.append(np.array(mu_est))
+
+				# if oscillations take place
+				if np.where(ll_history < 0)[0].size >= 33 and ll_history[-1]>0:
+					if beta != 1:
+						print('ll break')
+						break
+					else:
+						for k in range(K):
+							wsig, vsig = decomps[k]
+							# print('noise added because of ll_history')
+							mu_est[k] = vsig.dot(vsig.T.dot(mu_est[k]) + np.random.normal(n,1)*wsig.reshape((n,1))**0.5)
+
+
 			print("Steps {} ".format(steps))
 			beta_step.append((beta, steps-1))
 

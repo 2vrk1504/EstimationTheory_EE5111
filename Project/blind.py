@@ -2,16 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 N = 512
-L = 2
+L = 4
 K = 4
 
 SYMBOLS = np.array([1+1j, -1+1j, 1-1j, -1-1j])
 
-n_sigma2 = 0.1
+n_sigma2 = 0.01
 
 # channel parameters
 c_sigma = 0.5 ** 0.5 	
-lambda_ = 0.2
+lambda_ = 1
 p = np.exp(-lambda_ * (np.arange(1,L+1) - 1)).reshape((L,1))
 a = np.random.normal(0, c_sigma, (L,1))
 b = np.random.normal(0, c_sigma, (L,1))
