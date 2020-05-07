@@ -2,17 +2,28 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Noise Params
-NOISE_PDF_NAME = "2-Pareto"
+NOISE_PDF_NAME = "Laplacian"
 g = 0.1 # gamma
+dc = 0
 
 
 # define your pdf here
 def noise_pdf(x):
-	return np.where(x<=1, 0, 1/(x**2))
+	return 0.5*np.exp(-np.abs(x-dc)/g)/g # Laplace
+	# return np.where(np.logical_and(x>g + dc, x<-g+dc), 2/g, 0) # Uniform
+	# return 1/(np.pi*g*(1 + ((x-dc)/g)**2)) # Cauchy
+	# return np.where(x<=1, 0, 1/(x**2)) # 2 pareto
 
 #inverse cdf for sampling
 def cdf_inv(x): 
-	return g/(1-x)
+	# Laplace
+	sign = np.ones(x.size)
+	toss = np.random.rand(x.size)
+	sign[np.where(toss<0.5)] = -1
+	return g*np.log((1-x))*sign + dc
+	# return (2*g)*(x-0.5 + dc) # uniform
+	# return g*np.tan(np.pi*(x-0.5)) + dc # Cauchy
+	# return g/(1-x)	# 2 - pareto
 
 
 # TRUE MODEL PARAMETERS
@@ -120,7 +131,7 @@ def solve(y, thresh, K, s_est, mu_est=None, sigma_est=None, alpha_est=None, beta
 			print('noise added beta change')
 			print()
 			for k in range(K):
-				mu_est[k] += np.random.normal()*sigma_est[k]**0.5
+				mu_est[k] += 0.1*np.random.normal()*sigma_est[k]**0.5
 
 		started = True
 		llh_01 = likelihood(alpha_est, ww, mu_est, sigma_est, 1)
@@ -164,7 +175,7 @@ def solve(y, thresh, K, s_est, mu_est=None, sigma_est=None, alpha_est=None, beta
 			# if the max change in the past 100 iterations is not much then
 			if np.max(tolerance_history) <= tolerance_history_thresh:
 				print('noise added because of history')
-				mu_est[k] += np.random.normal()*sigma_est[k]**0.5
+				mu_est[k] += 0.1*np.random.normal()*sigma_est[k]**0.5
 
 
 			llh_1 = likelihood(alpha_est, ww, mu_est, sigma_est, beta)
@@ -191,7 +202,7 @@ def solve(y, thresh, K, s_est, mu_est=None, sigma_est=None, alpha_est=None, beta
 					break
 				else:
 					for k in range(K):
-						mu_est[k] += np.random.normal()*sigma_est[k]**0.5
+						mu_est[k] += 0.1*np.random.normal()*sigma_est[k]**0.5
 
 		print("Steps {} ".format(steps))
 		beta_step.append((beta, steps-1))
@@ -208,8 +219,8 @@ b = np.random.normal(0, 1, (L,1))
 # initialization
 s_est00 = ((a + 1j*b)*p)/(np.sum(p**2)) # same starting point for both
 
-s_ests_daem, steps_daem, likelihoods_daem = solve(y, K=K, s_est=s_est00, thresh=1e-2, min_thresh=1e-4)
-s_ests_em, steps_em, likelihoods_em = solve(y, K=K, thresh=1e-2, s_est=s_est00, min_thresh=1e-4, betas=[1])
+s_ests_daem, steps_daem, likelihoods_daem = solve(y, K=K, s_est=s_est00, thresh=1e-4, min_thresh=1e-10)
+s_ests_em, steps_em, likelihoods_em = solve(y, K=K, thresh=1e-2, s_est=s_est00, min_thresh=1e-10, betas=[1])
 
 plot_channel(s_ls, 'Least Squares')
 plot_channel(s_ests_daem[-1], 'GMM-DAEM,steps='+str(steps_daem))
