@@ -29,7 +29,6 @@ def cdf_inv(x):
 
 mu=np.zeros((K,1,1))
 sigma=np.ones((K,1,1))
-colors = ['red', 'pink', 'brown','gold']
 
 errorss_daem = []; alphass_daem = []; muss_daem = [];
 errorss_em = []; alphass_em = []; muss_em = []
@@ -47,7 +46,7 @@ X = cdf_inv(np.random.rand(N)).reshape((1,N))
 # print('Actual:')
 # print('alpha: {}\nmu:\n{}\nsigma:\n{}\n\n'.format(alpha, mu, sigma))
 #alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-6, K=K, max_steps=5000)
-K_daem, res = solver.fit_data(X=X, thresh=1e-4, min_thresh=1e-6, max_steps=5000, algo='DAEM', Kmin=4, Kmax=10)
+K_daem, res = solver.fit_data(X=X, thresh=1e-4, min_thresh=1e-6, max_steps=5000, algo='DAEM', Kmin=4, Kmax=20)
 alpha_est_daem, mu_est_daem, sigma_est_daem, er, steps, beta_step, likelihoods_daem, al = res
 #errorss_daem.append(errors_daem)
 alphass_daem.append(alpha_est_daem)
@@ -57,7 +56,7 @@ print('DAEM')
 print('Steps:\n{}\n alpha_est: {}\nmu_est:\n{}\nsigma_est:\n{}\n\n'.format(steps, alpha_est_daem[-1], mu_est_daem[-1], sigma_est_daem))
 
 #alpha_est_em, mu_est_em, sigma_est_em, errors_em, steps, __, likelihoods_em, actual_likelihood_em = solver.EM_GMM(X=X, thresh=1e-10, K=K, max_steps=5000)
-K_em, res = solver.fit_data(X=X, thresh=1e-6, max_steps=5000, algo='EM', Kmin=4, Kmax=10)
+K_em, res = solver.fit_data(X=X, thresh=1e-6, max_steps=5000, algo='EM', Kmin=4, Kmax=20)
 alpha_est_em, mu_est_em, sigma_est_em, er, steps, __, likelihoods_em, al = res
 #errorss_em.append(errors_em)
 alphass_em.append(alpha_est_em)
@@ -71,7 +70,7 @@ actual_likelihood = np.sum(np.log(pdf(X)))/N
 
 plt.figure('Likelihood')
 plt.subplot(1,2,1)
-plt.title(r'DAEM Likelihoods vs. Iterations, ')#$(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
+plt.title(r'DAEM Likelihoods vs. Iterations, ')
 for i, alpha in enumerate(alphas):
 	plt.plot(likelihoods_daem)
 plt.plot(np.repeat(actual_likelihood,len(likelihoods_daem)), label='Actual')	
@@ -80,7 +79,7 @@ plt.grid(True)
 
 plt.figure('Likelihood')
 plt.subplot(1,2,2)
-plt.title(r'EM Likelihoods vs. Iterations, ')#$(\mu_1,\mu_2)=($'+str(-mu_iter)+','+str(mu_iter)+')')
+plt.title(r'EM Likelihoods vs. Iterations, ')
 for i, alpha in enumerate(alphas):
 	plt.plot(likelihoods_em)
 plt.plot(np.repeat(actual_likelihood,len(likelihoods_em)), label='Actual')	

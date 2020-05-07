@@ -2,16 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Noise Params
-NOISE_PDF_NAME = "Gaussian"
-g = 0.1 # gamma
+NOISE_PDF_NAME = "Cauchy"
+g = 0.5 # gamma
 
 # define your pdf here
 def noise_pdf(x):
-	return 1/(g*np.pi*(1+(x/g)**2))
+	return 1/(g*np.pi*(1+((x-4)/g)**2))
 
 #inverse cdf for sampling
 def cdf_inv(x): 
-	return g*np.tan(np.pi*(x-0.5))
+	return g*np.tan(np.pi*(x-0.5)) + 4
 
 
 # TRUE MODEL PARAMETERS
@@ -47,6 +47,15 @@ def plot_channel(hplot, label):
 	plt.stem([(hh[0]).imag for hh in hplot], linefmt='r:', markerfmt='ro', label=label, use_line_collection=True)
 	plt.legend(loc='upper right')
 
+def plot_MSE(hplot, label):
+	plt.figure('MSE')
+	plt.title('MSE vs. iters')
+	plt.grid(True)
+	MSE = np.sum(np.abs((hplot-s0).reshape((L, len(hplot))))**2, axis=0)
+	print('MSE of ' + label + '= ', MSE[-1])
+	plt.plot(MSE, label=label)
+	plt.legend(loc='upper right')
+
 X = np.array([QPSK_SYMBOLS[int(np.random.rand()*4)] for i in range(N)])
 A = np.diag(X).dot(F)
 AH = np.conjugate(A).T
@@ -78,17 +87,12 @@ def likelihood(alphas, x, mus, sigmas, beta):
 		ll += (alphas[k]**beta)*P_gaussian(x, mus[k], sigmas[k], beta)
 	return ll
 
-def solve(y, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.8, 0.9, 1.2, 1.0], history_length=100, min_thresh=1e-10, tolerance_history_thresh=1e-6, max_steps=10000):
+def solve(y, thresh, K, s_est, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.8, 0.9, 1.2, 1.0], history_length=100, min_thresh=1e-10, tolerance_history_thresh=1e-6, max_steps=10000):
 	N = y.size
 	likelihoods = []
 	beta_step = []
 	steps = 0
-	p = np.exp(-0.01 * (np.arange(1,L+1) - 1)).reshape((L,1))
-	a = np.random.normal(0, 1, (L,1))
-	b = np.random.normal(0, 1, (L,1))
-
-	# initialization
-	s_est = ((a + 1j*b)*p)/(np.sum(p**2))
+	s_ests = [s_est.copy()]
 	ww = (y-A.dot(s_est)).reshape(N)
 
 	# Initial estimates
@@ -125,7 +129,7 @@ def solve(y, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.8,
 		# however, the following is being done for numerical stability
 		h = np.array([(alpha_est[k]**beta)*P_gaussian(ww, mu_est[k], sigma_est[k], beta)/(llh_1+1e-9) for k in range(K-1)])
 		h = np.append(h, [(1 - np.sum(h, axis=0))], axis=0)
-		h_tot = np.array([np.sum(h[k]) for k in range(K)])
+		h_tot = np.array([np.sum(h[k]) for k in range(K)]) + 1e-20
 		
 		tolerance = np.ones(N)
 		tolerance_history = np.ones(history_length)
@@ -151,7 +155,7 @@ def solve(y, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.8,
 			for k in range(K):
 				mu_est[k] = np.sum(h[k]*ww)/(h_tot[k] + 1e-19)
 				sigma_est[k] = np.sum((np.abs(ww-mu_est[k])**2)*h[k]) + 1e-20
-				sigma_est[k] /= (h_tot[k] + 1e-11)
+				sigma_est[k] /= (h_tot[k])
 				alpha_est[k] = h_tot[k]/N
 
 
@@ -168,7 +172,7 @@ def solve(y, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.8,
 			# The following is being done for numerical stability
 			h = [(alpha_est[k]**beta)*P_gaussian(ww, mu_est[k], sigma_est[k], beta)/(llh_1+1e-9) for k in range(K-1)]
 			h = np.append(h, [(1 - np.sum(h, axis=0))], axis=0)
-			h_tot = np.array([np.sum(h[k]) for k in range(K)])
+			h_tot = np.array([np.sum(h[k]) for k in range(K)]) + 1e-20
 
 			log_ll0 = np.log(llh_00 + 1e-11)
 			log_ll1 = np.log(llh_01 + 1e-11)
@@ -178,7 +182,7 @@ def solve(y, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.8,
 			#errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est))
 			likelihoods.append(np.sum(log_ll1)/N) 
 			ll_history = np.append(ll_history[1:], [likelihoods[-1]-likelihoods[-2]])
-
+			s_ests.append(s_est.copy())
 			# if oscillations take place
 			if np.where(ll_history < 0)[0].size >= 33 and ll_history[-1]>0:
 				if beta != 1:
@@ -192,19 +196,36 @@ def solve(y, thresh, K, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.8,
 		beta_step.append((beta, steps-1))
 
 		# print('Beta: {} --- alpha_est: {}, mu_est: {}, sigma_est: {}'.format(beta, alpha_ests, mu_est, sigma_est))
-	return s_est, steps, likelihoods
+	return np.array(s_ests), steps, likelihoods
 
 actual_likelihood = np.sum(np.log(noise_pdf(np.real(noise))*noise_pdf(np.imag(noise))))/N
 
-s_est, steps, likelihoods = solve(y, K=K, thresh=1e-4, min_thresh=1e-6)
+p = np.exp(-0.01 * (np.arange(1,L+1) - 1)).reshape((L,1))
+a = np.random.normal(0, 1, (L,1))
+b = np.random.normal(0, 1, (L,1))
+
+# initialization
+s_est00 = ((a + 1j*b)*p)/(np.sum(p**2)) # same starting point for both
+
+s_ests_daem, steps_daem, likelihoods_daem = solve(y, K=K, s_est=s_est00, thresh=1e-2, min_thresh=1e-4)
+s_ests_em, steps_em, likelihoods_em = solve(y, K=K, thresh=1e-2, s_est=s_est00, min_thresh=1e-4, betas=[1])
 
 plot_channel(s_ls, 'Least Squares')
-plot_channel(s_est, 'GMM noise model')
+plot_channel(s_ests_daem[-1], 'GMM-DAEM,steps='+str(steps_daem))
+plot_channel(s_ests_em[-1], 'GMM-EM, steps='+str(steps_em))
+
+plot_MSE(s_ests_daem, 'DAEM')
+plot_MSE(s_ests_em, 'EM')
 
 plt.figure('Likelihood')
+plt.subplot(1,2,1)
 plt.title(r'DAEM Likelihoods vs. Iterations, ')
-plt.plot(likelihoods)
-plt.plot(np.repeat(actual_likelihood,len(likelihoods)), label='Actual')	
+plt.plot(likelihoods_daem)
+plt.plot(np.repeat(actual_likelihood,len(likelihoods_daem)), label='Actual')	
 plt.grid(True)
-
+plt.subplot(1,2,2)
+plt.title(r'EM Likelihoods vs. Iterations, ')
+plt.plot(likelihoods_em)
+plt.plot(np.repeat(actual_likelihood,len(likelihoods_em)), label='Actual')	
+plt.grid(True)
 plt.show()

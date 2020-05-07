@@ -131,7 +131,7 @@ class Solver:
  
 		actual_likelihood = np.sum(np.log(likelihood(self.alpha, X, self.mu, self.sigma, 1) + 1e-11))/N # With actual parameters
 	
-		errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est)) # error of first estimate
+		#errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est)) # error of first estimate
 		likelihoods.append(np.sum(np.log(likelihood(alpha_est, X, mu_est, sigma_est, 1)))/N)
 		alpha_ests.append(np.array(alpha_est)); mu_ests.append(np.array(mu_est))
 
@@ -209,7 +209,7 @@ class Solver:
 				tolerance = np.abs(((log_ll0-log_ll1)/log_ll1))
 				tolerance_history = np.append(tolerance_history[1:], [np.max(tolerance)])
 
-				errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est))
+				#errors.append(ds_error(n, K, self.alpha, self.mu, self.sigma, alpha_est, mu_est, sigma_est))
 				likelihoods.append(np.sum(log_ll1)/N) 
 				ll_history = np.append(ll_history[1:], [likelihoods[-1]-likelihoods[-2]])
 				alpha_ests.append(np.array(alpha_est)); mu_ests.append(np.array(mu_est))
