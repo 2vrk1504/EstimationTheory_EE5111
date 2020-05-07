@@ -2,21 +2,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Noise Params
-NOISE_PDF_NAME = "Cauchy"
-g = 0.5 # gamma
+NOISE_PDF_NAME = "2-Pareto"
+g = 0.1 # gamma
+
 
 # define your pdf here
 def noise_pdf(x):
-	return 1/(g*np.pi*(1+((x-4)/g)**2))
+	return np.where(x<=1, 0, 1/(x**2))
 
 #inverse cdf for sampling
 def cdf_inv(x): 
-	return g*np.tan(np.pi*(x-0.5)) + 4
+	return g/(1-x)
 
 
 # TRUE MODEL PARAMETERS
 QPSK_SYMBOLS = [1+1j, -1+1j, 1-1j, -1-1j]
-N = 512		# dimensions of signal detected
+N = 128		# dimensions of signal detected
 L = 32 		# channel taps
 
 F = np.array([ [ np.exp((np.pi*2j*i*j)/N) for j in range(L)] for i in range(N)])
@@ -51,7 +52,7 @@ def plot_MSE(hplot, label):
 	plt.figure('MSE')
 	plt.title('MSE vs. iters')
 	plt.grid(True)
-	MSE = np.sum(np.abs((hplot-s0).reshape((L, len(hplot))))**2, axis=0)
+	MSE = np.sum(np.abs(hplot-s0)**2, axis=1)
 	print('MSE of ' + label + '= ', MSE[-1])
 	plt.plot(MSE, label=label)
 	plt.legend(loc='upper right')
@@ -87,7 +88,7 @@ def likelihood(alphas, x, mus, sigmas, beta):
 		ll += (alphas[k]**beta)*P_gaussian(x, mus[k], sigmas[k], beta)
 	return ll
 
-def solve(y, thresh, K, s_est, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.8, 0.9, 1.2, 1.0], history_length=100, min_thresh=1e-10, tolerance_history_thresh=1e-6, max_steps=10000):
+def solve(y, thresh, K, s_est, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.5, 0.8, 1.2, 1.0], history_length=100, min_thresh=1e-10, tolerance_history_thresh=1e-6, max_steps=10000):
 	N = y.size
 	likelihoods = []
 	beta_step = []
