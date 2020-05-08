@@ -3,27 +3,28 @@ import matplotlib.pyplot as plt
 
 # Noise Params
 NOISE_PDF_NAME = "Laplacian"
-g = 0.1 # gamma
+g = 0.5 # gamma
 dc = 0
 
 
 # define your pdf here
 def noise_pdf(x):
-	return 0.5*np.exp(-np.abs(x-dc)/g)/g # Laplace
+	# return 0.5*np.exp(-np.abs(x-dc)/g)/g # Laplace
 	# return np.where(np.logical_and(x>g + dc, x<-g+dc), 2/g, 0) # Uniform
-	# return 1/(np.pi*g*(1 + ((x-dc)/g)**2)) # Cauchy
+	return 1/(np.pi*g*(1 + ((x-dc)/g)**2)) # Cauchy
 	# return np.where(x<=1, 0, 1/(x**2)) # 2 pareto
+	# return 0.7/(np.pi*g*(1 + ((x)/g)**2)) + 0.3*np.exp(-0.5*(x**2)/(g**2))/((2*np.pi*g**2)**0.5) # mixture of gaussian and cauchy
 
 #inverse cdf for sampling
 def cdf_inv(x): 
 	# Laplace
-	sign = np.ones(x.size)
-	toss = np.random.rand(x.size)
-	sign[np.where(toss<0.5)] = -1
-	return g*np.log((1-x))*sign + dc
+	# sign = np.ones(x.size)
+	# toss = np.random.rand(x.size)
+	# return g*np.log((1-x))*sign + dc
 	# return (2*g)*(x-0.5 + dc) # uniform
-	# return g*np.tan(np.pi*(x-0.5)) + dc # Cauchy
+	return g*np.tan(np.pi*(x-0.5)) + dc # Cauchy
 	# return g/(1-x)	# 2 - pareto
+	# return np.where(toss>0.3, g*np.tan(np.pi*(x-0.5)), g*np.random.randn())
 
 
 # TRUE MODEL PARAMETERS
@@ -45,7 +46,7 @@ norm_p = np.sum(p**2)
 # s0 is the true channel impulse response vector
 s0 = ((a + 1j*b)*p)/norm_p	# h[k] = (a[k] + jb[k])p[k] / norm(p)
 
-def plot_channel(hplot, label):
+def plot_signal(hplot, label):
 	plt.figure()
 	plt.subplot(2,1,1)
 	plt.title(label + ' Real and Imaginary')
@@ -64,7 +65,7 @@ def plot_MSE(hplot, label):
 	plt.title('MSE vs. iters')
 	plt.grid(True)
 	MSE = np.sum(np.abs(hplot-s0)**2, axis=1)
-	print('MSE of ' + label + '= ', MSE[-1])
+	print('MSE of ' + label + '\t=\t', MSE[-1])
 	plt.plot(MSE, label=label)
 	plt.legend(loc='upper right')
 
@@ -74,8 +75,13 @@ AH = np.conjugate(A).T
 
 noise = cdf_inv(np.random.rand(N)).reshape((N,1)) + 1j*cdf_inv(np.random.rand(N)).reshape((N,1))
 
+# psd_square_root = 100/np.linspace(1, 1000, N//2) # psd_square_root for brown noise
+psd_square_root = 100/np.linspace(1, 1000, N//2)**0.5 # psd_square_root for pink/flicker noise
+psd_square_root = np.append(psd_square_root, np.flip(psd_square_root))
+flicker_noise = np.fft.ifft(psd_square_root*np.exp(1j*2*np.pi*np.random.rand(N))).reshape((N,1)) # phase added randomly
+
 # received symbols
-y = A.dot(s0) + noise
+y = A.dot(s0) + noise + flicker_noise
 
 # LS Estimate
 s_ls = FH.dot((y.flatten()/X).reshape((N,1)))/N
@@ -99,7 +105,7 @@ def likelihood(alphas, x, mus, sigmas, beta):
 		ll += (alphas[k]**beta)*P_gaussian(x, mus[k], sigmas[k], beta)
 	return ll
 
-def solve(y, thresh, K, s_est, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.5, 0.8, 1.2, 1.0], history_length=100, min_thresh=1e-10, tolerance_history_thresh=1e-6, max_steps=10000):
+def solve(y, thresh, K, s_est, mu_est=None, sigma_est=None, alpha_est=None, betas=[0.4, 0.8, 1.2, 1.0], history_length=100, min_thresh=1e-10, tolerance_history_thresh=1e-6, max_steps=10000):
 	N = y.size
 	likelihoods = []
 	beta_step = []
@@ -213,8 +219,8 @@ def solve(y, thresh, K, s_est, mu_est=None, sigma_est=None, alpha_est=None, beta
 actual_likelihood = np.sum(np.log(noise_pdf(np.real(noise))*noise_pdf(np.imag(noise))))/N
 
 p = np.exp(-0.01 * (np.arange(1,L+1) - 1)).reshape((L,1))
-a = np.random.normal(0, 1, (L,1))
-b = np.random.normal(0, 1, (L,1))
+a = np.random.normal(0, 10, (L,1))
+b = np.random.normal(0, 10, (L,1))
 
 # initialization
 s_est00 = ((a + 1j*b)*p)/(np.sum(p**2)) # same starting point for both
@@ -222,10 +228,11 @@ s_est00 = ((a + 1j*b)*p)/(np.sum(p**2)) # same starting point for both
 s_ests_daem, steps_daem, likelihoods_daem = solve(y, K=K, s_est=s_est00, thresh=1e-4, min_thresh=1e-10)
 s_ests_em, steps_em, likelihoods_em = solve(y, K=K, thresh=1e-2, s_est=s_est00, min_thresh=1e-10, betas=[1])
 
-plot_channel(s_ls, 'Least Squares')
-plot_channel(s_ests_daem[-1], 'GMM-DAEM,steps='+str(steps_daem))
-plot_channel(s_ests_em[-1], 'GMM-EM, steps='+str(steps_em))
+plot_signal(s_ls, 'Least Squares')
+plot_signal(s_ests_daem[-1], 'GMM-DAEM,steps='+str(steps_daem))
+plot_signal(s_ests_em[-1], 'GMM-EM, steps='+str(steps_em))
 
+plot_MSE(np.array(steps_daem*[s_ls]), 'LSE')
 plot_MSE(s_ests_daem, 'DAEM')
 plot_MSE(s_ests_em, 'EM')
 
