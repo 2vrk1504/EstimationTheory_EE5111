@@ -15,16 +15,13 @@ y=np.random.multivariate_normal([0,0],cov,N)
 
 
 # Q1 MLE 
-cov_est=np.dot(y.T,y)/N
+s=np.dot(y.T,y)
 print("MLE :")
-print(cov_est)
+print(s/N)
 # Q2 Bayesian estimation
 
 print("Bayesian estimation :")
-s=np.zeros((2,2))
-for i in range(N):
-	a=y[i].reshape((2,1))
-	s=np.add(s,np.dot(a,a.T))
+
 cov_est=np.add(d0,s)/(v0+N+d+1)
 print(cov_est)
 
