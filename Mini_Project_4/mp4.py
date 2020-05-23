@@ -38,4 +38,29 @@ print("Independent Jeffrey's prior")
 cov_est=s/(j2+N)
 print(cov_est)
 
+# Q4 Monte carlo estimation
+
+M=[1000,10000,100000]
+
+print("Monte Carlo Bayesian Estimation")
+
+for m in M:
+	print("m =",m)
+	x=invwishart.rvs(v0,d0,size=m)
+
+	lx=invwishart.pdf(x.T, df=N-3, scale=s)
+
+	A=np.dot(x.T,lx)/np.sum(lx)
+	print(A)
+
+d0=np.array([[2,0],[0,4]])
+print(" part b")
+for m in M:
+	print("m =",m)
+	x=invwishart.rvs(v0,d0,size=m)
+
+	lx=invwishart.pdf(x.T, df=N-3, scale=s)
+
+	A=np.dot(x.T,lx)/np.sum(lx)
+	print(A)
 
