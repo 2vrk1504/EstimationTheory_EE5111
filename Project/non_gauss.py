@@ -13,19 +13,22 @@ n = 1			# dimension
 g = 10
 
 # non zero support of the pdf
-xlims = [-1000, 1000]
+xlims = [-100, 100]
 
 # name of pdf
 pdf_name = 'Cauchy'
 
 # define your pdf here
 def pdf(x):
-	return 1/(g*np.pi*(1+(x/g)**2))
+	# return 0.5*g*np.exp(-g*np.abs(x))
+	# return np.where(np.logical_and(x>g + dc, x<-g+dc), 2/g, 0)
+	return 1/(np.pi*g*(1 + (x/g)**2))
+	# return np.where(x<=1, 0, 1/(x**2))
 
 #inverse cdf for sampling
 def cdf_inv(x): 
 	return g*np.tan(np.pi*(x-0.5))
-
+	# return 1/(1-x) # 2-pareto
 
 mu=np.zeros((K,1,1))
 sigma=np.ones((K,1,1))
@@ -46,7 +49,7 @@ X = cdf_inv(np.random.rand(N)).reshape((1,N))
 # print('Actual:')
 # print('alpha: {}\nmu:\n{}\nsigma:\n{}\n\n'.format(alpha, mu, sigma))
 #alpha_est_daem, mu_est_daem, sigma_est_daem, errors_daem, steps, beta_step, likelihoods_daem, actual_likelihood_daem = solver.DAEM_GMM(X=X, thresh=1e-6, K=K, max_steps=5000)
-K_daem, res = solver.fit_data(X=X, thresh=1e-4, min_thresh=1e-6, max_steps=5000, algo='DAEM', Kmin=4, Kmax=20)
+K_daem, res = solver.fit_data(X=X, thresh=1e-4, min_thresh=1e-6, max_steps=5000, algo='DAEM', Kmin=4, Kmax=8)
 alpha_est_daem, mu_est_daem, sigma_est_daem, er, steps, beta_step, likelihoods_daem, al = res
 #errorss_daem.append(errors_daem)
 alphass_daem.append(alpha_est_daem)
@@ -56,7 +59,7 @@ print('DAEM')
 print('Steps:\n{}\n alpha_est: {}\nmu_est:\n{}\nsigma_est:\n{}\n\n'.format(steps, alpha_est_daem[-1], mu_est_daem[-1], sigma_est_daem))
 
 #alpha_est_em, mu_est_em, sigma_est_em, errors_em, steps, __, likelihoods_em, actual_likelihood_em = solver.EM_GMM(X=X, thresh=1e-10, K=K, max_steps=5000)
-K_em, res = solver.fit_data(X=X, thresh=1e-6, max_steps=5000, algo='EM', Kmin=4, Kmax=20)
+K_em, res = solver.fit_data(X=X, thresh=1e-6, max_steps=5000, algo='EM', Kmin=4, Kmax=8)
 alpha_est_em, mu_est_em, sigma_est_em, er, steps, __, likelihoods_em, al = res
 #errorss_em.append(errors_em)
 alphass_em.append(alpha_est_em)
@@ -104,8 +107,8 @@ for i in range(K_em):
 
 
 # KL Divergence
-dkl_daem = np.sum(pdf_calc*dx*np.log(pdf_calc/yy_daem + 1e-20))
-dkl_em = np.sum(pdf_calc*dx*np.log(pdf_calc/yy_em + 1e-20))
+dkl_daem = np.sum(pdf_calc*dx*np.log(pdf_calc/yy_daem + 1e-10))
+dkl_em = np.sum(pdf_calc*dx*np.log(pdf_calc/yy_em + 1e-10))
 
 print()
 print('KL Divergence')
